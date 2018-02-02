@@ -10,12 +10,17 @@ from tracers_dens import *
 To-do:
 
 1. Organize weight_triaixal function
-2. convert trascers density function into a class.
+2. Why weights are negative ?
+3. How to proplery bin the energy?
 """
 
 def rho_tracers(r, M, profile, profile_params):
     """
     Density profiles for the
+    to-do:
+
+    1. pass as an argument the density function instead of the if statements.
+    2. profile paramas as *profile_params
     """
     if profile == 'Plummer':
         rho = dens_plummer(r, M, profile_params[0])
@@ -29,6 +34,12 @@ def rho_tracers(r, M, profile, profile_params):
     return rho
 
 def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, profile_params):
+    """
+    N_Eb : number of bins for the Energy
+
+
+
+    """
     G = 4.30071e-6
     stellar_mass=stellar_mass*1e10
     Ep=Ep-G*m*np.size(r)/np.max(r) #correction term
@@ -39,7 +50,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     Ep += shift_energy
 
     #I chose 300 because this code was initially used for cosmological halos which were way too messed up beyond 300 kpc
-    #w=np.where((r <300) & (r!=r[0]))
+    #w=np.where((r<100) & (r!=r[0]))
     #r=r[w]
     #Ep=Ep[w]
     #Ek=Ek[w]
@@ -53,28 +64,33 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     Nbins= (MAX-MIN)/bsize
     histo_rad,redges=np.histogram(np.log10(r), bins = np.linspace(MIN, MAX, Nbins))
     rbins=np.ndarray(shape=np.size(redges)-1, dtype=float)
+
     for i in range(1,np.size(redges)):
         rbins[i-1]=redges[i-1]-(redges[i]-redges[i-1])/2.
+
     rbins=10**rbins
     nn=np.size(rbins)
     binsize_r=np.ndarray(shape=nn, dtype=float)
+
     #     binsize_r is evaluated here for g(E) calculation
     for j in range(0,nn):
         binsize_r[j]=10**redges[j+1]-10**redges[j]
 
     #TRACER PARAMETRISATION
-    bb=0.5 #scale radius
+    #bb=0.5 #scale radius
     nu_tracer=rho_tracers(rbins, stellar_mass, profile, profile_params)
     #nu_tracer=stellar_density(stellar_mass, params)
 
     #Need to do the reverse indices here -
     pot2=np.ndarray(shape=np.size(histo_rad), dtype=float)
+
     for j in range(0, np.size(redges)-1):
         wbin=np.where((np.log10(r)>=redges[j]) & (np.log10(r)<redges[j+1]))
         if(np.size(wbin)>0):
             pot2[j]=np.mean(Ep[wbin]) #reverse indices in IDL is much faster than this junk
 
     # forgot why I wanted more than 20 particles in the bins, maybe sth to do with gradient not working with missing data
+    # this can be improved using an interpolating scheme.
     w=np.where(histo_rad>20.)
     rbins=rbins[w]
     binsize_r=binsize_r[w]
@@ -160,7 +176,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     #Ensure that the sum of the weights = mass of the tracers - this is not strictly needed
     X=stellar_mass/(np.sum(Weights_array)*m)
     Weights_array=Weights_array*X
-    print(X)
+
     #print(np.size(Weights_array))
     #return the IDS from which the weights are associated to the particles
     #needed for tracking where the tracers end up in subsequent snapshots

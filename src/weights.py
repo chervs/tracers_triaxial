@@ -10,8 +10,8 @@ from tracers_dens import *
 To-do:
 
 1. Organize weight_triaixal function
-2. Why weights are negative ?
-3. How to proplery bin the energy?
+2. How to proplery bin the energy?, how many bins?
+3. 
 """
 
 def rho_tracers(r, M, profile, profile_params):

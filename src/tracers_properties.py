@@ -105,11 +105,11 @@ if __name__ == "__main__":
     plot_bins = int(sys.argv[4])
 
 
-    pp= readsnap('../halos/LMC3_2M_vir_000', 'pos', 'dm')
-    vv= readsnap('../halos/LMC3_2M_vir_000', 'vel', 'dm')
-    massarr= readsnap('../halos/LMC3_2M_vir_000', 'mass', 'dm')
-    Epp = readsnap('../halos/LMC3_2M_vir_000', 'pot', 'dm')
-    ids = readsnap('../halos/LMC3_2M_vir_000', 'pid', 'dm')
+    pp= readsnap('../halos/MW2_40M_vir_000', 'pos', 'dm')
+    vv= readsnap('../halos/MW2_40M_vir_000', 'vel', 'dm')
+    massarr= readsnap('../halos/MW2_40M_vir_000', 'mass', 'dm')
+    Epp = readsnap('../halos/MW2_40M_vir_000', 'pot', 'dm')
+    ids = readsnap('../halos/MW2_40M_vir_000', 'pid', 'dm')
 
     rr=np.sqrt(pp[:,0]**2+pp[:,1]**2+pp[:,2]**2)
 
@@ -123,9 +123,9 @@ if __name__ == "__main__":
     Epp = Epp[r_cut]
     ids = ids[r_cut]
 
-    pp_fut= readsnap('../halos/LMC3_2M_vir_009', 'pos', 'dm')
-    massarr_fut= readsnap('../halos/LMC3_2M_vir_009', 'mass', 'dm')
-    ids_fut = readsnap('../halos/LMC3_2M_vir_009', 'pid', 'dm')
+    pp_fut= readsnap('../halos/MW2_40M_vir_012', 'pos', 'dm')
+    massarr_fut= readsnap('../halos/MW2_40M_vir_012', 'mass', 'dm')
+    ids_fut = readsnap('../halos/MW2_40M_vir_012', 'pid', 'dm')
 
     rr_fut=np.sqrt(pp_fut[:,0]**2+pp_fut[:,1]**2+pp_fut[:,2]**2)
 
@@ -136,9 +136,9 @@ if __name__ == "__main__":
 
     a=0.5
     r_profiles = np.linspace(1, rcut, plot_bins-1)
-    teo_plummer = soda.profiles.dens_plummer(a, r_profiles, 1)
+    #teo_plummer = soda.profiles.dens_plummer(a, r_profiles, 1)
     #weights_plum, w_ids = weights.weight_triaxial(rr, Ekk, Epp, ids, partmass, bins_w, nbins, 1, 'Plummer', [a])
-    weights_hern, w_ids_hern = weights.weight_triaxial(rr, Ekk, Epp, ids, partmass, bins_w, nbins, 1, 'Hernquist', [a])
+    weights_hern, w_ids_hern = weights.weight_triaxial(rr, Ekk, Epp, ids, partmass, bins_w, nbins, 1, 'Plummer', [a])
     #print(ids, w_ids_hern)
 
     density_hern = den_tracers(weights_hern, w_ids_hern, rr, massarr, plot_bins, rcut)
@@ -146,12 +146,12 @@ if __name__ == "__main__":
 
 
 
-    plt.title('Stellar tracers density $N_b = {}, bins_w = {}$'.format(nbins, bins_w))
-    plt.loglog(r_profiles, density_hern, label=r'$\rho_{*} pres$', c='k')
-    plt.loglog(r_profiles, density_hern_fut, label=r'$\rho_{*} fut$', c='r')
+    plt.title('MW stellar tracers density $N_b = {}, bins_w = {}$'.format(nbins, bins_w), fontsize=15)
+    plt.loglog(r_profiles, density_hern, label=r'$t=0$ Gyrs', c='k')
+    plt.loglog(r_profiles, density_hern_fut, label=r'$t=5$ Gyrs', c='r')
     plt.xlabel('$r[Kpc]$')
-    plt.ylabel(r'$\rho $')
+    plt.ylabel(r'$\rho_{*}$')
     #plt.loglog(r_profiles, teo_plummer, label=r'$\rho_{theo}$', c='k', ls='--')
-    plt.legend()
-    plt.savefig('density_tracer_{}_{}.png'.format(bins_w, nbins))
+    plt.legend(fontsize=17)
+    plt.savefig('MW_density_tracer_{}_{}.png'.format(bins_w, nbins), bbox_inches='tight')
     plt.close()

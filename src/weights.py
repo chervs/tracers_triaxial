@@ -9,9 +9,9 @@ from tracers_dens import *
 """
 To-do:
 
-1. Organize weight_triaixal function
-2. How to proplery bin the energy?, how many bins?
-3. 
+1. Organize weight_triaxial function
+2. How to properly bin the energy?, how many bins?
+3.
 """
 
 def rho_tracers(r, M, profile, profile_params):
@@ -99,12 +99,17 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     rbins=rbins[w]
     binsize_r=binsize_r[w]
     nu_tracer=nu_tracer[w]
+
     pot2=pot2[w]
     pot2-=shift_energy
     psi2=(-1.0)*pot2
+
     E-=shift_energy
     epsilon=(-1.0)*E
 
+    #print(psi2)
+    #print(E)
+    #print(shift_energy)
     #Fetching derivatives from the data necessary for the Eddington formula evalution
 
     dnu_dpsi=np.gradient(nu_tracer, psi2)
@@ -129,40 +134,43 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     dpsi=np.ndarray(shape=np.size(psi2), dtype=float)
     for i in range (1, np.size(dpsi)):
         dpsi[i]=psi2[i]-psi2[i-1]
-
+    
 
     distribution_function=np.ndarray(shape=np.size(epsilon_bins), dtype=float)
     for i in range(0,np.size(epsilon_bins)):
-        w=np.where(psi2<epsilon_bins[i])
+        w=np.where(psi2<epsilon_bins[i])[0]
         #x=np.min(w) #i don't think I use this anywhere
         eps=epsilon_bins[i]
-        if (np.size(w[0])!=0):
-            w=np.array(w)
-            tot1=dpsi[w[0,0]::]
-            tot2=dnu2_dpsi2[w[0,0]::]
-            tot3=np.sqrt(2.0*(eps-psi2[w[0,0]::]))
+        if (np.size(w)!=0):
+            #w=np.array(w)
+            tot1=dpsi[w]
+            tot2=dnu2_dpsi2[w]
+            tot3=np.sqrt(2.0*(eps-psi2[w]))
             tot=tot1*tot2/tot3
             val=(1.0)/(np.sqrt(8.0)*np.pi**2)*np.sum(tot) #Arthur's eval as Sum (in sims no divergence due to res)
             #print val, i, "val, i"
             distribution_function[i]=val
         else:
             distribution_function[i]=0
+
     #DENSITY OF STATES--------------
     wrme=np.ndarray(shape=np.size(Ebins), dtype=int)
     rme=np.ndarray(shape=np.size(Ebins), dtype=float)
+
     for i in range(0, np.size(Ebins)):
-        wpot_equals_E=np.where(pot2<=Ebins[i])
+        wpot_equals_E=np.where(pot2<=Ebins[i])[0]
         if (np.size(wpot_equals_E)!=0):
-            wrme[i]=np.max(np.array(wpot_equals_E))
+            wrme[i]=np.max(wpot_equals_E)
         else:
             wrme[i]=0
-
+    
     density_of_states=np.ndarray(shape=np.size(Ebins), dtype=float) # density of states integral (evaluated as sum)
     for i in range(0,np.size(Ebins)):
         if (np.size(wrme[i])==0):
             g1=0.0
         else:
             g1=rbins[0:wrme[i]]**2
+            print(Ebins[i]-pot2[0:wrme[i]])
             g2=np.sqrt(2.0*(Ebins[i]-pot2[0:wrme[i]]))
             density_of_states[i]=(4.0*np.pi)**2*np.sum(binsize_r[0:wrme[i]]*g1*g2)
 

@@ -163,7 +163,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
             wrme[i]=np.max(wpot_equals_E)
         else:
             wrme[i]=0
-    
+    # something werid here!
     density_of_states=np.ndarray(shape=np.size(Ebins), dtype=float) # density of states integral (evaluated as sum)
     for i in range(0,np.size(Ebins)):
         if (np.size(wrme[i])==0):

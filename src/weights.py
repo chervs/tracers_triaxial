@@ -134,7 +134,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     dpsi=np.ndarray(shape=np.size(psi2), dtype=float)
     for i in range (1, np.size(dpsi)):
         dpsi[i]=psi2[i]-psi2[i-1]
-    
+
 
     distribution_function=np.ndarray(shape=np.size(epsilon_bins), dtype=float)
     for i in range(0,np.size(epsilon_bins)):
@@ -157,22 +157,27 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     wrme=np.ndarray(shape=np.size(Ebins), dtype=int)
     rme=np.ndarray(shape=np.size(Ebins), dtype=float)
 
-    for i in range(0, np.size(Ebins)):
-        wpot_equals_E=np.where(pot2<=Ebins[i])[0]
-        if (np.size(wpot_equals_E)!=0):
-            wrme[i]=np.max(wpot_equals_E)
-        else:
-            wrme[i]=0
-    # something werid here!
+    # Nico: commented this to avoid some values of pot2>Ebins since
+    # taking the max(wpot_equals_E) don't garantee to avoid them.
+    #for i in range(0, np.size(Ebins)):
+    #    wpot_equals_E=np.where(pot2<=Ebins[i])[0]
+    #    if (len(wpot_equals_E)!=0):
+    #        wrme[i]=np.max(wpot_equals_E)
+    #    else:
+    #        wrme[i]=0
+    # 
     density_of_states=np.ndarray(shape=np.size(Ebins), dtype=float) # density of states integral (evaluated as sum)
     for i in range(0,np.size(Ebins)):
-        if (np.size(wrme[i])==0):
+            wpot_equals_E=np.where(pot2<=Ebins[i])[0]
+        if (len(wpot_equals_E))==0):
             g1=0.0
         else:
-            g1=rbins[0:wrme[i]]**2
+            g1=rbins[wpot_equals_E]**2
             print(Ebins[i]-pot2[0:wrme[i]])
-            g2=np.sqrt(2.0*(Ebins[i]-pot2[0:wrme[i]]))
-            density_of_states[i]=(4.0*np.pi)**2*np.sum(binsize_r[0:wrme[i]]*g1*g2)
+            #g2=np.sqrt(2.0*(Ebins[i]-pot2[0:wrme[i]]))
+            g2=np.sqrt(2.0*(Ebins[i]-pot2[wpot_equals_E]))
+            #density_of_states[i]=(4.0*np.pi)**2*np.sum(binsize_r[0:wrme[i]]*g1*g2)
+            density_of_states[i]=(4.0*np.pi)**2*np.sum(binsize_r[wpot_equals_E]*g1*g2)
 
     indsort=np.argsort(distribution_function) #sorted indices
     indsort=indsort[::-1] #reverse

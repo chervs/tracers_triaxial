@@ -4,7 +4,7 @@ import numpy as np
 import sys
 
 from pygadgetreader import readsnap
-from tracers_dens import *
+from .tracers_dens import *
 
 """
 To-do:
@@ -40,7 +40,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
 
 
     """
-    G = 4.30071e-6
+    G = 4.30071e-6 # Gadget units
     stellar_mass=stellar_mass*1e10
     Ep=Ep-G*m*np.size(r)/np.max(r) #correction term
     E=Ek+Ep
@@ -48,15 +48,15 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     shift_energy = -np.min(Ep)
     E += shift_energy
     Ep += shift_energy
-
+    print('r0',len(r))
     #I chose 300 because this code was initially used for cosmological halos which were way too messed up beyond 300 kpc
-    w=np.where((r<300) & (r!=r[0]))
-    r=r[w]
-    Ep=Ep[w]
-    Ek=Ek[w]
-    E=E[w]
-    partID=partID[w]
-
+    #w=np.where((r<300) & (r!=r[0]))[0]
+    #r=r[w]
+    #Ep=Ep[w]
+    #Ek=Ek[w]
+    #E=E[w]
+    #partID=partID[w]
+    print('r1',len(r))
     # Histogram of radius to smooth the potential Phi(r)
     #  - spherical averaging for triaxial halos for Laporte 2013
     #
@@ -80,9 +80,6 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     #TRACER PARAMETRISATION
     #bb=0.5 #scale radius
     nu_tracer=rho_tracers(rbins, 1, profile, profile_params)
-    #bb=5
-    #nu_tracer=(3.0/(4.0*np.pi*bb**3))*(1.0+(rbins/bb)**2)**(-2.5)
-    #nu_tracer=stellar_density(stellar_mass, params)
 
     #Need to do the reverse indices here -
     pot2=np.ndarray(shape=np.size(histo_rad), dtype=float)
@@ -95,7 +92,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     # forgot why I wanted more than 20 particles in the bins, maybe sth to do with gradient not working with missing data
     # this can be improved using an interpolating scheme.
 
-    w=np.where(histo_rad>20.)
+    w=np.where(histo_rad>20.)[0]
     rbins=rbins[w]
     binsize_r=binsize_r[w]
     nu_tracer=nu_tracer[w]
@@ -107,13 +104,12 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     E-=shift_energy
     epsilon=(-1.0)*E
 
-    #print(psi2)
-    #print(E)
-    #print(shift_energy)
     #Fetching derivatives from the data necessary for the Eddington formula evalution
 
     dnu_dpsi=np.gradient(nu_tracer, psi2)
     dnu2_dpsi2=np.gradient(dnu_dpsi, psi2)
+
+    print('gradient:', len(dnu_dpsi), len(psi2))
 
     #Binning Energy for g(E) and f(E) (f(epsilon)) calculations
     Histo_E, Edges = np.histogram(E, bins=N_Eb)
@@ -173,25 +169,28 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
             g1=0.0
         else:
             g1=rbins[wpot_equals_E]**2
-            print(Ebins[i]-pot2[0:wrme[i]])
             #g2=np.sqrt(2.0*(Ebins[i]-pot2[0:wrme[i]]))
             g2=np.sqrt(2.0*(Ebins[i]-pot2[wpot_equals_E]))
             #density_of_states[i]=(4.0*np.pi)**2*np.sum(binsize_r[0:wrme[i]]*g1*g2)
             density_of_states[i]=(4.0*np.pi)**2*np.sum(binsize_r[wpot_equals_E]*g1*g2)
+
 
     indsort=np.argsort(distribution_function) #sorted indices
     indsort=indsort[::-1] #reverse
     # weights= D.F(tracers)/ (D.F.(self-consistent)) - self-consistent D.F. f(E) generates the potential Phi
     # N(E)=f(E)*g(E)
     Weights=distribution_function[indsort[::-1]]/((Histo_M)/density_of_states)
+
     # cast the weights to every particle
     Weights_array=np.ndarray(shape=np.size(r), dtype=float)
+    print('Weights_array_init', len(Weights_array))
     for j in range(0, np.size(Edges)-1):
-        wbin=np.where((E>=Edges[j]) & (E<Edges[j+1]))
-        if(np.size(wbin[0])!=0):
+        wbin=np.where((E>=Edges[j]) & (E<Edges[j+1]))[0]
+        if(np.size(wbin)!=0):
             Weights_array[wbin]=Weights[j]
-
+    print('weights_array', len(Weights_array), len(Edges))
     #Ensure that the sum of the weights = mass of the tracers - this is not strictly needed
+
     X=stellar_mass/(np.sum(Weights_array)*m)
     Weights_array=Weights_array*X
 

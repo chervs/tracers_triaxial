@@ -1,9 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import sys
 
 from pygadgetreader import readsnap
-import weights
+from .weights import *
 
 
 
@@ -13,18 +12,105 @@ def radial_bins(r, nbins):
     r_edges += dr/2
     return r_hist, r_edges[:-1]
 
-def stellar_quantity(w, pids, wids, phys_quantitiy):
+
+def finding_indices(ids_w, ids):
+    """
+    Return the indicies in which the ids of the two snapshots are the same.
     """
 
+    indices = np.zeros(len(ids_w))
+    for i in range(len(indices)):
+        indices[i] = (np.where(ids=ids_w[i])[0])
+
+    return indices
+
+
+def stellar_properties(w_ids, weights, ids, mw_pos, mw_vel, massarr):
+    """
+    Returns the stellar particles properties weighted.
+
+    Parameters:
+    ----------
+
+    w_ids : numpy.array
+            array with ids of the weights
+    weights : numpy.array
+            array with ids of the weights
+    ids : numpy.array
+            array with ids of the weights
+    mw_pos : numpy.array
+            array with ids of the weights
+    mw_vel : numpy.array
+            array with ids of the weights
+    massarr : numpy.array
+            array with ids of the weights
+    """
+    # finds the indicies where ids_init are in w_ids_h
+    indices_ids_init = finding_indices(w_ids_h, ids_init)
+    ids_init_w = ids_init[indices_ids_init]
+    pos_init_w = mw_pos[indices_ids_init]
+    vel_init_w = mw_vel[indices_ids_init]*weights
+    massarr_init_w = massarr_init[indices_ids_init]*weights
+
+    return ids_init_w, pos_init_w, vel_init_w, massarr_init_w
+
+def stellar_quantity(weights, pids, wids, pq):
+    """
+    Assign the stellar particle weights to a given physical
+    quantity (pq).
+
+    Parameters:
+    ----------
+
+    Returns:
+    --------
+
+
     """
 
-    s=np.argsort(wids)
-    weights=w[s]
-
-    phys_quantitiy_w = phys_quantitiy_ids[s]
+    assert len(pids)==len(wids) , 'Length of ids arrays should be the same'
+    assert len(weights)==len(wids) , 'Length of ids arrays should be the same'
 
 
-    return phys_quantitiy_w, wids[s]
+    sort_index_w=np.argsort(wids)
+    weights_sorted=weights[sort_index_w]
+
+    sort_index_ids = np.argsort(pids)
+    pq_sort = pq[sort_index_ids]
+
+    phys_quantitiy_w = pq_sort * weights_sorted
+
+
+    return phys_quantitiy_w, wids[sort_index_w]
+
+
+
+
+def future_quantity(pos, pids,  wids, pq):
+    """
+    Assign the stellar particle weights to a given physical
+    quantity (pq).
+
+    Parameters:
+    ----------
+
+    Returns:
+    --------
+
+
+    """
+
+    assert len(pids)==len(wids) , 'Length of ids arrays should be the same'
+    assert len(weights)==len(wids) , 'Length of ids arrays should be the same'
+
+
+    sort_index_fut=np.argsort(pids)
+    pos_sorted_fut=pos[sort_index_fut]
+
+    sort_index_wids = np.argsort(wids)
+    pq_sort_wids = pq[sort_index_wids]
+
+    return pos_sorted_fut, pq_sort_wids
 
 
 def den_tracers(w, wids, r, mass, nbins, rcut):
@@ -96,62 +182,11 @@ def den_tracers(w, wids, r, mass, nbins, rcut):
 
 
 if __name__ == "__main__":
-    import soda
-    import sys
 
-    rcut = float(sys.argv[1])
-    bins_w = float(sys.argv[2])
-    nbins = int(sys.argv[3])
-    plot_bins = int(sys.argv[4])
-
-
-    pp= readsnap('../halos/MW2_40M_vir_000', 'pos', 'dm')
-    vv= readsnap('../halos/MW2_40M_vir_000', 'vel', 'dm')
-    massarr= readsnap('../halos/MW2_40M_vir_000', 'mass', 'dm')
-    Epp = readsnap('../halos/MW2_40M_vir_000', 'pot', 'dm')
-    ids = readsnap('../halos/MW2_40M_vir_000', 'pid', 'dm')
-
-    rr=np.sqrt(pp[:,0]**2+pp[:,1]**2+pp[:,2]**2)
-
-    r_cut = index = np.where((rr<rcut))[0]
-
-    pp = pp[r_cut]
-    rr = rr[r_cut]
-    vv = vv[r_cut]
-
-    massarr = massarr[r_cut]
-    Epp = Epp[r_cut]
-    ids = ids[r_cut]
-
-    pp_fut= readsnap('../halos/MW2_40M_vir_012', 'pos', 'dm')
-    massarr_fut= readsnap('../halos/MW2_40M_vir_012', 'mass', 'dm')
-    ids_fut = readsnap('../halos/MW2_40M_vir_012', 'pid', 'dm')
-
-    rr_fut=np.sqrt(pp_fut[:,0]**2+pp_fut[:,1]**2+pp_fut[:,2]**2)
-
-
-    partmass=massarr[0]*1e10 #generated the halo particles as "bulge"-type in Gadget file
-    v2=vv[:,0]**2+vv[:,1]**2+vv[:,2]**2
-    Ekk=0.5*v2
-
-    a=0.5
-    r_profiles = np.linspace(1, rcut, plot_bins-1)
-    #teo_plummer = soda.profiles.dens_plummer(a, r_profiles, 1)
-    #weights_plum, w_ids = weights.weight_triaxial(rr, Ekk, Epp, ids, partmass, bins_w, nbins, 1, 'Plummer', [a])
-    weights_hern, w_ids_hern = weights.weight_triaxial(rr, Ekk, Epp, ids, partmass, bins_w, nbins, 1, 'Plummer', [a])
-    #print(ids, w_ids_hern)
+    weights_hern, w_ids_hern = weight_triaxial(rr, Ekk, Epp, ids, partmass, bins_w, nbins, 1, 'Plummer', [a])
 
     density_hern = den_tracers(weights_hern, w_ids_hern, rr, massarr, plot_bins, rcut)
     density_hern_fut = den_tracers(weights_hern, w_ids_hern, rr_fut, massarr_fut, plot_bins, rcut)
 
 
 
-    plt.title('MW stellar tracers density $N_b = {}, bins_w = {}$'.format(nbins, bins_w), fontsize=15)
-    plt.loglog(r_profiles, density_hern, label=r'$t=0$ Gyrs', c='k')
-    plt.loglog(r_profiles, density_hern_fut, label=r'$t=5$ Gyrs', c='r')
-    plt.xlabel('$r[Kpc]$')
-    plt.ylabel(r'$\rho_{*}$')
-    #plt.loglog(r_profiles, teo_plummer, label=r'$\rho_{theo}$', c='k', ls='--')
-    plt.legend(fontsize=17)
-    plt.savefig('MW_density_tracer_{}_{}.png'.format(bins_w, nbins), bbox_inches='tight')
-    plt.close()

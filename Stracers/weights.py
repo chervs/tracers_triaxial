@@ -198,6 +198,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     #return the IDS from which the weights are associated to the particles
     #needed for tracking where the tracers end up in subsequent snapshots
     # Each particle gets a weight.
+    assert len(Weights_array) == len(r), 'Error: number of weights different to the number of particles' 
     return Weights_array, partID
 
 if __name__ == "__main__":

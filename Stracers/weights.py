@@ -48,7 +48,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     shift_energy = -np.min(Ep)
     E += shift_energy
     Ep += shift_energy
-    print('r0',len(r))
+    #print('r0',len(r))
     #I chose 300 because this code was initially used for cosmological halos which were way too messed up beyond 300 kpc
     #w=np.where((r<300) & (r!=r[0]))[0]
     #r=r[w]
@@ -56,7 +56,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     #Ek=Ek[w]
     #E=E[w]
     #partID=partID[w]
-    print('r1',len(r))
+    #print('r1',len(r))
     # Histogram of radius to smooth the potential Phi(r)
     #  - spherical averaging for triaxial halos for Laporte 2013
     #
@@ -109,7 +109,6 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     dnu_dpsi=np.gradient(nu_tracer, psi2)
     dnu2_dpsi2=np.gradient(dnu_dpsi, psi2)
 
-    print('gradient:', len(dnu_dpsi), len(psi2))
 
     #Binning Energy for g(E) and f(E) (f(epsilon)) calculations
     Histo_E, Edges = np.histogram(E, bins=N_Eb)
@@ -161,7 +160,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     #        wrme[i]=np.max(wpot_equals_E)
     #    else:
     #        wrme[i]=0
-    # 
+    #
     density_of_states=np.ndarray(shape=np.size(Ebins), dtype=float) # density of states integral (evaluated as sum)
     for i in range(0,np.size(Ebins)):
         wpot_equals_E=np.where(pot2<=Ebins[i])[0]
@@ -183,12 +182,11 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
 
     # cast the weights to every particle
     Weights_array=np.ndarray(shape=np.size(r), dtype=float)
-    print('Weights_array_init', len(Weights_array))
+
     for j in range(0, np.size(Edges)-1):
         wbin=np.where((E>=Edges[j]) & (E<Edges[j+1]))[0]
         if(np.size(wbin)!=0):
             Weights_array[wbin]=Weights[j]
-    print('weights_array', len(Weights_array), len(Edges))
     #Ensure that the sum of the weights = mass of the tracers - this is not strictly needed
 
     X=stellar_mass/(np.sum(Weights_array)*m)
@@ -198,7 +196,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     #return the IDS from which the weights are associated to the particles
     #needed for tracking where the tracers end up in subsequent snapshots
     # Each particle gets a weight.
-    assert len(Weights_array) == len(r), 'Error: number of weights different to the number of particles' 
+    assert len(Weights_array) == len(r), 'Error: number of weights different to the number of particles'
     return Weights_array, partID
 
 if __name__ == "__main__":

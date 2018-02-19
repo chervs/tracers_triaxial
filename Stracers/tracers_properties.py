@@ -1,10 +1,33 @@
 import numpy as np
 import sys
+sys.path.append('../../MW_anisotropy/code/')
 
+#import reading_snapshots
 from pygadgetreader import readsnap
 from .weights import *
 
+# TEMPORAL !!!!!!!!!!!!!!
+def all_host_particles(xyz, vxyz, pids, pot, mass, N_host_particles):
+    """
+    Function that return the host and the sat particles
+    positions and velocities.
 
+    Parameters:
+    -----------
+    xyz: snapshot coordinates with shape (n,3)
+    vxys: snapshot velocities with shape (n,3)
+    pids: particles ids
+    Nhost_particles: Number of host particles in the snapshot
+    Returns:
+    --------
+    xyz_mw, vxyz_mw, xyzlmc, vxyz_lmc: coordinates and velocities of
+    the host and the sat.
+
+    """
+    sort_indexes = np.sort(pids)
+    N_cut = sort_indexes[N_host_particles]
+    host_ids = np.where(pids<N_cut)[0]
+    return xyz[host_ids], vxyz[host_ids], pids[host_ids], pot[host_ids], mass[host_ids]
 
 def radial_bins(r, nbins):
     r_hist, r_edges = np.histogram(r, nbins)
@@ -25,34 +48,118 @@ def finding_indices(ids_w, ids):
     return indices
 
 
-def stellar_properties(w_ids, weights, ids, mw_pos, mw_vel, massarr):
+def Stellar_properties(ids_weights, weights, ids, mass, pos, vel):
     """
-    Returns the stellar particles properties weighted.
-
-    Parameters:
+    Paramters:
     ----------
 
-    w_ids : numpy.array
-            array with ids of the weights
-    weights : numpy.array
-            array with ids of the weights
-    ids : numpy.array
-            array with ids of the weights
-    mw_pos : numpy.array
-            array with ids of the weights
-    mw_vel : numpy.array
-            array with ids of the weights
-    massarr : numpy.array
-            array with ids of the weights
-    """
-    # finds the indicies where ids_init are in w_ids_h
-    indices_ids_init = finding_indices(w_ids_h, ids_init)
-    ids_init_w = ids_init[indices_ids_init]
-    pos_init_w = mw_pos[indices_ids_init]
-    vel_init_w = mw_vel[indices_ids_init]*weights
-    massarr_init_w = massarr_init[indices_ids_init]*weights
+    ids_weights :
 
-    return ids_init_w, pos_init_w, vel_init_w, massarr_init_w
+    weights :
+
+    ids :
+
+    mass :
+
+    pos :
+
+    vel :
+
+    """
+    assert len(ids_weights)<= len(ids), 'Error: length of weights ids is larger than lenght of ids!'
+
+    common_ids = np.isin(ids, ids_weights)
+    # selecting elements that are common in weight_ids and ids:
+    ids_n = ids[common_ids]
+    mass_n = mass[common_ids]
+    pos_n = pos[common_ids]
+    vel_n = vel[common_ids]
+
+    assert len(ids_n) == len(ids_weights), 'Same number of particles'
+    # Sorting ids:
+    ids_w_arg_sort = np.argsort(ids_weights)
+    ids_arg_sort = np.argsort(ids_n)
+
+
+    comp_items = ids_weights[ids_w_arg_sort]==ids_n[ids_arg_sort]
+    false_ind = np.where(comp_items==False)[0]
+    assert (len(false_ind)==0), 'Error: Hey!'
+
+    # Sorting ids and properties
+    weights_n = weights[ids_w_arg_sort]
+    ids_weights_n = ids_weights[ids_w_arg_sort]
+
+    # Sorting future properties
+    ids_n = ids_n[ids_arg_sort]
+    mass_n = mass_n[ids_arg_sort]*weights_n
+    posx = pos_n[ids_arg_sort,0]
+    posy = pos_n[ids_arg_sort,1]
+    posz = pos_n[ids_arg_sort,2]
+
+    velx = vel_n[ids_arg_sort,0]*weights_n
+    vely = vel_n[ids_arg_sort,1]*weights_n
+    velz = vel_n[ids_arg_sort,2]*weights_n
+
+    all_pos = np.array([posx, posy, posz]).T
+    all_vel = np.array([velx, vely, velz]).T
+
+    return [ids_weights_n, weights_n, ids_n], mass_n, all_pos, all_vel
+
+def energies(snap, rcut=0):
+    """
+    Paramters:
+    ----------
+
+    snap : string
+        path and name of the snapshot
+
+    rcut : int
+        truncation radii (no trunction by default rcut=0)
+
+
+    Returns:
+    --------
+    Distances (rr)
+    Kinetic energy (Ekk)
+    Potential (MW_pot)
+    Ids (MW_ids)
+    Mass (MW_mass)
+    Pos (MW_pos)
+    Vel (MW_vel)
+
+    """
+
+    pp= readsnap(snap, 'pos', 'dm')
+    vv= readsnap(snap, 'vel', 'dm')
+    massarr= readsnap(snap, 'mass', 'dm')
+    Epp = readsnap(snap, 'pot', 'dm')
+    ids = readsnap(snap, 'pid', 'dm')
+
+
+    # Selecting MW particles
+    N_host_particles = 100000000
+    MW_pos, MW_vel, MW_ids, MW_pot, MW_mass = all_host_particles(pp, vv, ids, Epp, massarr, N_host_particles)
+
+    assert len(MW_ids)==N_host_particles, 'Error: something went wrong selecting the host particles'
+
+    rr=np.sqrt(MW_pos[:,0]**2+MW_pos[:,1]**2+MW_pos[:,2]**2)
+
+
+    if rcut>0:
+        r_cut = np.where((rr<rcut))[0]
+
+        rr = rr[r_cut]
+        MW_pos = MW_pos[r_cut]
+        MW_vel = MW_vel[r_cut]
+        MW_mass = MW_mass[r_cut]
+        MW_pot = MW_pot[r_cut]
+        MW_ids = MW_ids[r_cut]
+
+    v2=MW_vel[:,0]**2+MW_vel[:,1]**2+MW_vel[:,2]**2
+    Ekk=0.5*v2
+
+    return rr, Ekk, MW_pot, MW_ids, MW_mass, MW_pos, MW_vel
+
 
 def stellar_quantity(weights, pids, wids, pq):
     """
@@ -80,37 +187,7 @@ def stellar_quantity(weights, pids, wids, pq):
 
     phys_quantitiy_w = pq_sort * weights_sorted
 
-
     return phys_quantitiy_w, wids[sort_index_w]
-
-
-
-
-def future_quantity(pos, pids,  wids, pq):
-    """
-    Assign the stellar particle weights to a given physical
-    quantity (pq).
-
-    Parameters:
-    ----------
-
-    Returns:
-    --------
-
-
-    """
-
-    assert len(pids)==len(wids) , 'Length of ids arrays should be the same'
-    assert len(weights)==len(wids) , 'Length of ids arrays should be the same'
-
-
-    sort_index_fut=np.argsort(pids)
-    pos_sorted_fut=pos[sort_index_fut]
-
-    sort_index_wids = np.argsort(wids)
-    pq_sort_wids = pq[sort_index_wids]
-
-    return pos_sorted_fut, pq_sort_wids
 
 
 def den_tracers(w, wids, r, mass, nbins, rcut):
@@ -187,6 +264,3 @@ if __name__ == "__main__":
 
     density_hern = den_tracers(weights_hern, w_ids_hern, rr, massarr, plot_bins, rcut)
     density_hern_fut = den_tracers(weights_hern, w_ids_hern, rr_fut, massarr_fut, plot_bins, rcut)
-
-
-

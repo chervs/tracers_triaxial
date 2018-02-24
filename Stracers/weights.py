@@ -4,7 +4,7 @@ import numpy as np
 import sys
 
 from pygadgetreader import readsnap
-from .tracers_dens import *
+from tracers_dens import *
 
 """
 To-do:
@@ -84,6 +84,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     #Need to do the reverse indices here -
     pot2=np.ndarray(shape=np.size(histo_rad), dtype=float)
 
+
     for j in range(0, np.size(redges)-1):
         wbin=np.where((np.log10(r)>=redges[j]) & (np.log10(r)<redges[j+1]))
         if(np.size(wbin)>0):
@@ -111,12 +112,14 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
 
 
     #Binning Energy for g(E) and f(E) (f(epsilon)) calculations
-    Histo_E, Edges = np.histogram(E, bins=N_Eb)
+    #Histo_E, Edges = np.histogram(E, bins=N_Eb)
+    Histo_E, Edges = np.histogram(E, bins=len(psi2))
     Ebins=np.ndarray(shape=np.size(Histo_E), dtype=float)
     for i in range(1,np.size(Edges)):
         Ebins[i-1]=Edges[i-1]-(Edges[i]-Edges[i-1])/2.
 
-    Histo_epsilon, epsdges = np.histogram(epsilon, bins=N_Eb)
+    #Histo_epsilon, epsdges = np.histogram(epsilon, bins=N_Eb)
+    Histo_epsilon, epsdges = np.histogram(epsilon, bins=len(psi2))
     epsilon_bins=np.ndarray(shape=np.size(Histo_epsilon), dtype=float)
     for i in range(1,np.size(epsdges)):
         epsilon_bins[i-1]=epsdges[i-1]-(epsdges[i]-epsdges[i-1])/2.
@@ -148,6 +151,8 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
         else:
             distribution_function[i]=0
 
+    return dnu2_dpsi2, dpsi, psi2,  epsilon_bins, distribution_function
+    """
     #DENSITY OF STATES--------------
     wrme=np.ndarray(shape=np.size(Ebins), dtype=int)
     rme=np.ndarray(shape=np.size(Ebins), dtype=float)
@@ -198,7 +203,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     # Each particle gets a weight.
     assert len(Weights_array) == len(r), 'Error: number of weights different to the number of particles'
     return Weights_array, partID
-
+    """
 if __name__ == "__main__":
     snapshot = sys.argv[1]
 

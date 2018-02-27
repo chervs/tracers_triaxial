@@ -105,7 +105,7 @@ def Stellar_properties(ids_weights, weights, ids, mass, pos, vel):
 
     return [ids_weights_n, weights_n, ids_n], mass_n, all_pos, all_vel
 
-def energies(snap, rcut=0):
+def energies(snap, N_host_particles, rcut=0, lmc=0):
     """
     Paramters:
     ----------
@@ -137,8 +137,11 @@ def energies(snap, rcut=0):
 
 
     # Selecting MW particles
-    N_host_particles = 100000000
-    MW_pos, MW_vel, MW_ids, MW_pot, MW_mass = all_host_particles(pp, vv, ids, Epp, massarr, N_host_particles)
+    #N_host_particles = 100000000
+    if lmc ==1 :
+        MW_pos, MW_vel, MW_ids, MW_pot, MW_mass = all_host_particles(pp, vv, ids, Epp, massarr, N_host_particles)
+    elif lmc==0:
+        MW_pos, MW_vel, MW_ids, MW_pot, MW_mass = pp, vv, ids, Epp, massarr
 
     assert len(MW_ids)==N_host_particles, 'Error: something went wrong selecting the host particles'
 

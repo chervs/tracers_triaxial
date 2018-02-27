@@ -4,7 +4,7 @@ import numpy as np
 import sys
 
 from pygadgetreader import readsnap
-from tracers_dens import *
+from .tracers_dens import *
 
 """
 To-do:
@@ -106,20 +106,30 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     epsilon=(-1.0)*E
 
     #Fetching derivatives from the data necessary for the Eddington formula evalution
+    # D
+
+    from scipy.interpolate import InterpolatedUnivariateSpline
+    spl1 = InterpolatedUnivariateSpline(rbins, nu_tracer)
+    spl2 = InterpolatedUnivariateSpline(rbins, psi2)
+
+    rbins_hr = np.linspace(min(rbins), max(rbins), 10000)
+    nu_tracer = spl1(rbins_hr)
+    psi2 = spl2(rbins_hr)
 
     dnu_dpsi=np.gradient(nu_tracer, psi2)
     dnu2_dpsi2=np.gradient(dnu_dpsi, psi2)
 
+    #return rbins, nu_tracer, psi2, dnu_dpsi, dnu2_dpsi2
 
     #Binning Energy for g(E) and f(E) (f(epsilon)) calculations
-    #Histo_E, Edges = np.histogram(E, bins=N_Eb)
-    Histo_E, Edges = np.histogram(E, bins=len(psi2))
+    Histo_E, Edges = np.histogram(E, bins=N_Eb)
+    #Histo_E, Edges = np.histogram(E, bins=len(psi2))
     Ebins=np.ndarray(shape=np.size(Histo_E), dtype=float)
     for i in range(1,np.size(Edges)):
         Ebins[i-1]=Edges[i-1]-(Edges[i]-Edges[i-1])/2.
 
-    #Histo_epsilon, epsdges = np.histogram(epsilon, bins=N_Eb)
-    Histo_epsilon, epsdges = np.histogram(epsilon, bins=len(psi2))
+    Histo_epsilon, epsdges = np.histogram(epsilon, bins=N_Eb)
+    #Histo_epsilon, epsdges = np.histogram(epsilon, bins=len(psi2))
     epsilon_bins=np.ndarray(shape=np.size(Histo_epsilon), dtype=float)
     for i in range(1,np.size(epsdges)):
         epsilon_bins[i-1]=epsdges[i-1]-(epsdges[i]-epsdges[i-1])/2.
@@ -136,9 +146,9 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
 
     distribution_function=np.ndarray(shape=np.size(epsilon_bins), dtype=float)
     for i in range(0,np.size(epsilon_bins)):
-        w=np.where(psi2<epsilon_bins[i])[0]
-        #x=np.min(w) #i don't think I use this anywhere
         eps=epsilon_bins[i]
+        w=np.where(psi2<eps)[0]
+
         if (np.size(w)!=0):
             #w=np.array(w)
             tot1=dpsi[w]
@@ -151,8 +161,8 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
         else:
             distribution_function[i]=0
 
-    return dnu2_dpsi2, dpsi, psi2,  epsilon_bins, distribution_function
-    """
+    #return dnu2_dpsi2, dpsi, psi2, epsilon_bins, distribution_function
+
     #DENSITY OF STATES--------------
     wrme=np.ndarray(shape=np.size(Ebins), dtype=int)
     rme=np.ndarray(shape=np.size(Ebins), dtype=float)
@@ -203,7 +213,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     # Each particle gets a weight.
     assert len(Weights_array) == len(r), 'Error: number of weights different to the number of particles'
     return Weights_array, partID
-    """
+
 if __name__ == "__main__":
     snapshot = sys.argv[1]
 

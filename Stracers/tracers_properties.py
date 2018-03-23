@@ -143,7 +143,7 @@ def energies(snap, N_host_particles, rcut=0, lmc=0):
     elif lmc==0:
         MW_pos, MW_vel, MW_ids, MW_pot, MW_mass = pp, vv, ids, Epp, massarr
 
-    assert len(MW_ids)==N_host_particles, 'Error: something went wrong selecting the host particles'
+    #assert len(MW_ids)==N_host_particles, 'Error: something went wrong selecting the host particles'
 
     rr=np.sqrt(MW_pos[:,0]**2+MW_pos[:,1]**2+MW_pos[:,2]**2)
 

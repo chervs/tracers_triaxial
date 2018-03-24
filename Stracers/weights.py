@@ -42,12 +42,13 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     """
     G = 4.30071e-6 # Gadget units
     stellar_mass=stellar_mass*1e10
-    Ep=Ep-G*m*np.size(r)/np.max(r) #correction term
+    Ep=Ep-G*m*np.size(r)/np.max(r) #correction term, what is this for?
     E=Ek+Ep
 
     shift_energy = -np.min(Ep)
     E += shift_energy
     Ep += shift_energy
+    
     #print('r0',len(r))
     #I chose 300 because this code was initially used for cosmological halos which were way too messed up beyond 300 kpc
     #w=np.where((r<300) & (r!=r[0]))[0]

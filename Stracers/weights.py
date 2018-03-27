@@ -2,9 +2,11 @@
 
 import numpy as np
 import sys
-
+from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import interp1d
 from pygadgetreader import readsnap
-from .tracers_dens import *
+from tracers_dens import *
+from smooth import savitzky_golay
 
 """
 To-do:
@@ -32,6 +34,35 @@ def rho_tracers(r, M, profile, profile_params):
         rho = dens_Einasto(r, M, profile_params[0], profile_params[1])
 
     return rho
+
+#def energies()
+
+def densities_derivatives(r, nu, psi_bins, interp_bins=1000):
+    """
+    
+    """
+    spl1 = InterpolatedUnivariateSpline(r, nu, k=5)
+    spl2 = InterpolatedUnivariateSpline(r, psi_bins)
+
+    # interpolating in the radial bins.  
+    rbins_hr = np.linspace(min(rbins), max(rbins), interp_bins)
+    nu_tracer_hr = spl1(rbins_hr)
+    psi2_hr = spl2(rbins_hr)
+
+    # First derivative.
+    dnu_dpsi = np.gradient(nu, psi_bins)
+    spl3 = interp1d(rbins, dnu_dpsi, kind='cubic')
+    dnu_dpsi_hr = spl3(rbins_hr)
+    
+    # second derivative
+    dnu2_dpsi2 = np.gradient(dnu_dpsi, psi2)
+    # smoothing first derivative
+    dnu_dpsi_hr_smooth = savitzky_golay(dnu_dpsi_hr, 7, 3)
+    dnu2_dpsi2_hr = np.gradient(dnu_dpsi_hr_smooth, psi2_hr)
+    # smoothing second derivative
+    dnu2_dpsi2_hr_smooth = savitzky_golay(dnu2_dpsi2_hr, 5, 3)
+
+    return nu, dnu_dpsi, dnu2_dpsi2, nu_hr, dnu_dpsi_smooth, dnu2_dpsi2
 
 def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, profile_params):
     """
@@ -74,7 +105,7 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     nn=np.size(rbins)
     binsize_r=np.ndarray(shape=nn, dtype=float)
 
-    #     binsize_r is evaluated here for g(E) calculation
+    # binsize_r is evaluated here for g(E) calculation
     for j in range(0,nn):
         binsize_r[j]=10**redges[j+1]-10**redges[j]
 
@@ -109,19 +140,10 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     #Fetching derivatives from the data necessary for the Eddington formula evalution
     # D
 
-    from scipy.interpolate import InterpolatedUnivariateSpline
-    spl1 = InterpolatedUnivariateSpline(rbins, nu_tracer)
-    spl2 = InterpolatedUnivariateSpline(rbins, psi2)
-
-    rbins_hr = np.linspace(min(rbins), max(rbins), 10000)
-    nu_tracer = spl1(rbins_hr)
-    psi2 = spl2(rbins_hr)
-
-    dnu_dpsi=np.gradient(nu_tracer, psi2)
-    dnu2_dpsi2=np.gradient(dnu_dpsi, psi2)
-
-    #return rbins, nu_tracer, psi2, dnu_dpsi, dnu2_dpsi2
-
+    dnu2_dpsi2_hr_smooth = savitzky_golay(dnu2_dpsi2_hr, 5, 3)
+    
+    return rbins, nu_tracer, psi2, dnu_dpsi, dnu2_dpsi2, rbins_hr, nu_tracer_hr, psi2_hr, dnu_dpsi_hr_smooth, dnu2_dpsi2_hr_smooth
+    """
     #Binning Energy for g(E) and f(E) (f(epsilon)) calculations
     Histo_E, Edges = np.histogram(E, bins=N_Eb)
     #Histo_E, Edges = np.histogram(E, bins=len(psi2))
@@ -214,7 +236,8 @@ def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, pr
     # Each particle gets a weight.
     assert len(Weights_array) == len(r), 'Error: number of weights different to the number of particles'
     return Weights_array, partID
-
+    """
+    
 if __name__ == "__main__":
     snapshot = sys.argv[1]
 
@@ -244,4 +267,21 @@ if __name__ == "__main__":
     partmass=mass[3]*1e10 #generated the halo particles as "bulge"-type in Gadget file
     v2=vv[:,0]**2+vv[:,1]**2+vv[:,2]**2
     Ekk=0.5*v2
-    weight, p_ids = weight_triaxial(rr,Ekk,Epp,ids,partmass,0.01,100,1, profile)
+    #weight, p_ids = weight_triaxial(rr,Ekk,Epp,ids,partmass,0.01,100,1, profile)
+
+    rbins, nu_tracer, psi2, dnu_dpsi, dnu2_dpsi2, rbins_hr, nu_tracer_hr, psi2_hr, dnu_dpsi_hr, dnu2_dpsi2_hr = weight_triaxial(rr, Ekk, Epp, ids, partmass, 0.01, 100, 1, 'Hernquist', [40.82])
+    print(len(rbins))
+    
+    import matplotlib.pyplot as plt
+    
+    plt.figure(figsize=(6, 15))
+    plt.subplot(3,1,1)
+    plt.plot(np.log(rbins_hr), np.log(nu_tracer_hr), lw=1, c='C9')
+    plt.scatter(np.log(rbins), np.log(nu_tracer), s=1, c='k')
+    plt.subplot(3,1,2)
+    plt.plot(np.log(rbins_hr), np.log(dnu_dpsi_hr), lw=1, c='C9')
+    plt.scatter(np.log(rbins), np.log(dnu_dpsi), s=1, c='k')
+    plt.subplot(3,1,3)
+    plt.plot(np.log(rbins_hr), np.log(dnu2_dpsi2_hr), lw=1, c='C9')
+    plt.scatter(np.log(rbins), np.log(dnu2_dpsi2), s=1, c='k')
+    plt.savefig('nu_tracers.png', bbox_inches='tight', dpi=150)

@@ -1,0 +1,98 @@
+\documentclass[14pt]{article}
+\usepackage{amsmath}
+\usepackage{listings} % For writing code see http://ctan.org/pkg/listings
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[margin=1.0in]{geometry}
+\usepackage{hyperref}
+
+\title{Stellar tagging method}
+\author{Nicolas Garavito-Camargo}
+
+
+\begin{document}
+\maketitle
+
+\section{Method:}
+
+All based on Chervin's work!\\
+
+Repository with code and examples available \href{https://github.com/jngaravitoc/tracers_triaxial}{here}.
+
+\begin{equation}
+  w(E) = \dfrac{N_*(E)}{N(E)} = \dfrac{f_*(E)g(E)}{N(E)}
+\end{equation}
+
+\begin{itemize}
+  \item $N(E)dE = g(E)f(E)dE$: Differential energy distribution: fraction of stars
+    that have energies in the range $E+dE$.
+  \item $g(E)$: Density of states: The volume of phase space per unit energy.
+  \item $f(E)$: Distribution function: Probability of finding a particle with
+    energy $E+dE$ in the phase space. 
+\end{itemize}
+
+\subsection{Differential energy distribution:}
+
+Number of stars in each energy bin (Histogram of the energies).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.5]{../N_E.pdf}
+\end{figure}
+
+
+\subsection{Distribution function:}
+
+
+Assuming:
+
+\begin{itemize}
+  \item Virial equilibrium.
+  \item Spherical symmetry.  
+\end{itemize}
+
+Eddington's Formula: 
+
+\begin{equation}
+  f_*(\mathcal{E}) = \dfrac{1}{\sqrt{8}\pi^2}\int_0^{\mathcal{E}} \dfrac{d
+  \nu}{\sqrt{\mathcal{E}- \Psi}}  \dfrac{d^2 \nu}{d \Psi^2} +
+  \dfrac{1}{\sqrt{\mathcal{E}}}\dfrac{d \nu}{d\Psi} \vert _{\Psi=0} 
+\end{equation}
+
+Where $\nu=\rho/M$ is the number density of tracers.
+
+Computing $\dfrac{d \nu}{d \psi}$ and $\dfrac{d^2 \nu}{d \psi^2}$
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.5]{../derivatives_dnu_dpsi.pdf}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.5]{../DF_Hernquist.pdf}
+\end{figure}
+
+
+\subsection{Density of states:}
+
+
+The density of states is computed as:
+
+\begin{equation}
+  g(E) = (4\pi)^2 \int_0^{r_E} r^2 \sqrt{2(E - \phi(r))} dr
+\end{equation}
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.5]{../gE.pdf}
+  \caption{Density of States for the Hernquist Halo.}
+\end{figure}
+
+\subsection{Assigning weights:}
+
+
+\end{document}
+

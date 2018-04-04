@@ -17,7 +17,7 @@ def dens_hernquist(r, M, a):
 
 def dens_NFWnRvir(r, M, c, Rvir):
     a = Rvir / c
-    M = M * units.Msun
+    M = M
     f = np.log(1.0 + Rvir/a) - (Rvir/a / (1.0 + Rvir/a))
     rho = M / ((4.0 * np.pi * a**3.0 * f) * (r / a) * (1.0 + (r/a))**2.0)
     return rho
@@ -38,7 +38,7 @@ def dens_Einasto(r, M, n, r_eff):
     See Merrit 06: https://arxiv.org/abs/astro-ph/0509417
 
     """
-    assert n<0.5, 'Einsto profile no implemented for n<0.5, see https://arxiv.org/abs/astro-ph/0509417'
+    assert n>0.5, 'Einasto profile no implemented for n<0.5, see for more details https://arxiv.org/abs/astro-ph/0509417'
 
     d_n = 3*n - 1/3. + 0.0079/n
 

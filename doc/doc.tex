@@ -7,17 +7,19 @@
 \usepackage{hyperref}
 
 \title{Stellar tagging method}
-\author{Nicolas Garavito-Camargo}
+\author{Nicol\'as Garavito-Camargo}
 
 
 \begin{document}
 \maketitle
 
+All based on Chervin's work! Laporte+13, +15\\
+
 \section{Method:}
 
-All based on Chervin's work!\\
 
-Repository with code and examples available \href{https://github.com/jngaravitoc/tracers_triaxial}{here}.
+Repository with code and examples available
+\href{https://github.com/jngaravitoc/tracers_triaxial/tree/interpolation}{here}.
 
 \begin{equation}
   w(E) = \dfrac{N_*(E)}{N(E)} = \dfrac{f_*(E)g(E)}{N(E)}
@@ -38,6 +40,8 @@ Number of stars in each energy bin (Histogram of the energies).
 \begin{figure}[H]
   \centering
   \includegraphics[scale=0.5]{../N_E.pdf}
+  \caption{Differential energy distribution  $N(E)$ for a Hernquist DM halo (solid black
+  line) and a smoothed $N(E)$}
 \end{figure}
 
 
@@ -56,10 +60,11 @@ Eddington's Formula:
 \begin{equation}
   f_*(\mathcal{E}) = \dfrac{1}{\sqrt{8}\pi^2}\int_0^{\mathcal{E}} \dfrac{d
   \nu}{\sqrt{\mathcal{E}- \Psi}}  \dfrac{d^2 \nu}{d \Psi^2} +
-  \dfrac{1}{\sqrt{\mathcal{E}}}\dfrac{d \nu}{d\Psi} \vert _{\Psi=0} 
+  \dfrac{1}{\sqrt{\mathcal{E}}}\dfrac{d \nu}{d\Psi} \Bigg\vert _{\Psi=0} 
 \end{equation}
 
-Where $\nu=\rho/M$ is the number density of tracers.
+Where $\nu=\rho/M$ is the number density of tracers, $\mathcal{E}=-E$,
+$\Psi=-\Phi$.
 
 Computing $\dfrac{d \nu}{d \psi}$ and $\dfrac{d^2 \nu}{d \psi^2}$
 
@@ -67,12 +72,11 @@ Computing $\dfrac{d \nu}{d \psi}$ and $\dfrac{d^2 \nu}{d \psi^2}$
 \begin{figure}[H]
   \centering
   \includegraphics[scale=0.5]{../derivatives_dnu_dpsi.pdf}
+  \includegraphics[scale=0.5]{../DF_Hernquist.pdf}
+  \caption{\textit{Right panel:} derivatives of the tracers density with respect
+  to the potential $\Psi$. \textit{Left panel}: DF of a Hernquist halo.}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.5]{../DF_Hernquist.pdf}
-\end{figure}
 
 
 \subsection{Density of states:}
@@ -92,6 +96,45 @@ The density of states is computed as:
 \end{figure}
 
 \subsection{Assigning weights:}
+
+The weights $w(E)$ are computed for each energy bin. Then all the DM particles
+are assigned a weight corresponding to the particle energy.
+
+\subsection{Test I: Building a stellar halo from a DM Hernquist halo.}
+
+\begin{equation}
+  m_{*,i} = w_i m_{DM} 
+\end{equation}
+
+\begin{figure}[H]
+   \includegraphics[scale=0.5]{../Hernquist_stellar_halos.pdf}
+   \includegraphics[scale=0.5]{../NFW_stellar_halos.pdf}
+   \caption{Density profiles of the stellar built from a Hernquist DM halo.
+   \textit{Right panel} show a Hernquist stellar halo for different scale
+   lengths. \textit{Left panel} show an NFW stellar halo for different
+   concentrations.}
+\end{figure}
+
+\subsection{Test II: Building the velocity dispersion profile. }
+
+\begin{equation}
+  v_{*,i} = w_i m_{DM} 
+\end{equation}
+
+
+\begin{equation}
+  \sigma_r = \dfrac{\sum_i w_i (v_{r,i}-\bar{v})^2}{\sum_i w_i}
+\end{equation}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.5]{../velocity_dispersion_tracers_hernquist.pdf}
+  \caption{Velocity dispersion profile for a Hernquist DM halo (solid black line)  and
+  the corresponding stellar halo and two different times (cyan and purple line).
+  The velocity dispersion profile of the stellar particles decrease faster with
+  radius that the velocity dispersion of the DM halo.}
+\end{figure}
+
 
 
 \end{document}

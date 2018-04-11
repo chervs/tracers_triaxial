@@ -9,9 +9,6 @@ from smooth import savitzky_golay
 """
 To-do:
 
-1. Organize weight_triaxial function
-2. How to properly bin the energy?, how many bins?
-3.
 """
 
 def rho_tracers(r, M, profile, profile_params):
@@ -330,7 +327,62 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params):
     return w_p
 
 
+def weights_snapshot(weights_snap1, ids_snap1, ids_snap2, pos_snap2, vel_snap2\
+        ,mass_snap2, **kwargs):
+
+    """
+    Re-arrange the weights for a new snapshot (snap2) different from the one used to compute
+    the weights (snap1). This is done because for computing the weights you have to
+    truncate the halo. The particles (ids, positions, velocities, mass etc..)
+    of the snap2 that are also in snap1 are
+    selected. 
+
+    Parameters:
+    ----------
+
+    weights_snap1 : numpy.array
+        Weights computed in snap1.
+    weights_ids : numpy.array.
+        Ids corresponding to snap1 truncated.
+    pos : numpy.array
+        Positions of the particles in snap2.
+    vel : numpy.array
+        Velocities of the particles in snap2.
+    mass : numpy.array
+        Masses of the particles in snap2.
+    kwargs:
+        pot
+        
+
+    Returns:
+    -------
+    """
+
+    assert len(ids_snap1)<= len(ids_snap2), 'Error: Length of weights ids larger than length of ids!'
+    
+    # Making copies of arrays.
+    weights_c = np.copy(weights_snap1)
+    ids_snap1_c = np.copy(ids_snap1)
+    ids_snap2_c = np.copy(ids_snap2)
+    pos_c = np.copy(pos_snap2)
+    vel_c = np.copy(vel_snap2)
+    mass_c = np.copy(mass_snap2)
+    ## Ids from snap1 that are in snap1
+    common_ids = np.isin(ids_snap2_c, ids_snap1_c)
+    ids_snap2_c = ids_snap2_c[common_ids]
+    pos_c = pos_c[common_ids]
+    vel_c = vel_c[common_ids]  
+    mass_c = mass_c[common_ids] 
+
+    return pos_c, vel_c, mass_c
+
+
+
+
+
+
 if __name__ == "__main__":
+
     snapshot = sys.argv[1]
 
 

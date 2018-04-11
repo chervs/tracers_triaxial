@@ -1,10 +1,5 @@
 import numpy as np
-import sys
-sys.path.append('../../MW_anisotropy/code/')
-
 #import reading_snapshots
-from pygadgetreader import readsnap
-from .weights import *
 
 
 
@@ -43,9 +38,9 @@ def den_profile(r, mass, rbins, rcut):
     for i in range(1, len(r_bins)):
        index = np.where((r<r_bins[i]) & (r>=r_bins[i-1]))[0]
        V = 4/3. * np.pi * (r_bins[i]**3-r_bins[i-1]**3)
-       rho_bins[i-1] = np.sum(m[index]) / V
+       rho_bins[i-1] = np.sum(mass[index]) / V
 
-    return r_bins+dr, density
+    return r_bins+dr, rho_bins
 
 
 def vel_cartesian_to_spherical(pos, vel):
@@ -205,9 +200,11 @@ def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted=0):
 
     return vr_disp_r, vtheta_disp_r, vphi_disp_r
 
+"""
 if __name__ == "__main__":
 
     weights_hern, w_ids_hern = weight_triaxial(rr, Ekk, Epp, ids, partmass, bins_w, nbins, 1, 'Plummer', [a])
 
     density_hern = den_tracers(weights_hern, w_ids_hern, rr, massarr, plot_bins, rcut)
     density_hern_fut = den_tracers(weights_hern, w_ids_hern, rr_fut, massarr_fut, plot_bins, rcut)
+"""

@@ -1,5 +1,3 @@
-#!bin/
-
 import numpy as np
 import sys
 from scipy.interpolate import InterpolatedUnivariateSpline
@@ -35,209 +33,303 @@ def rho_tracers(r, M, profile, profile_params):
 
     return rho
 
-#def energies()
 
-def densities_derivatives(r, nu, psi_bins, interp_bins=1000):
-    """
-    
-    """
-    spl1 = InterpolatedUnivariateSpline(r, nu, k=5)
-    spl2 = InterpolatedUnivariateSpline(r, psi_bins)
 
-    # interpolating in the radial bins.  
+#def interpolate_energies()
+
+def energies(r_part, Ep, v, n_rbins, n_ebins):
+    r"""
+
+    Parameters:
+    -----------
+
+    r_part: 'numpy.array`
+        Galactocentric distances of the DM particles in [$kpc$].
+    pmass: float
+        Mass of a DM particle in units of solar masses.
+    Ep : 'numpy.array`
+        potential energy in units of
+    v : 'numpy.array`
+        velocities in km/s
+    n_rbins : int
+        number of bins, this will be used to bin the potential energy.
+
+    n_ebins : int
+        number of bins, this will be used to bin the energy.
+
+    Returns:
+    --------
+
+    $\Psi$ : $\Psi = -\Phi + \Phi_0$ Relative potential.
+    $\epsilon$ : $\epsilon = -E + \phi_0$ relative total energy.
+
+
+    """
+
+    G = 4.30071e-6 # Gadget units
+    nbins_coarsed = 20
+    E_k = 0.5*v**2 # Kinetic energy / mass.
+    E = E_k + Ep
+    epsilon = (-1.0)*E
+
+    # Binning the data in logarithmic bins in radius
+    # Should I need to worried about centering the bin?
+    # yes if you are going to interpolate.
+
+    rbins = np.logspace(np.min(np.log10(r_part)), np.max(np.log10(r_part)), nbins_coarsed)
+    # spaced between rbins
+    dr = np.zeros(len(rbins)-1)
+    for i in range(len(rbins)-1):
+        dr[i] = rbins[i+1] - rbins[i]
+
+    pot = np.zeros(nbins_coarsed-1)
+
+    for i in range(len(rbins)-1):
+        index_bins = np.where((r_part<rbins[i+1])
+                              & (r_part>=rbins[i]))[0]
+
+        if len(index_bins) == 0:
+            pot[i] = 0
+            print('Warning : No particles found at r={:0>2f} kpc'.format(rbins[i]))
+        else:
+            pot[i] = np.mean(Ep[index_bins])
+
+
+    f_interp_pot = interp1d(rbins[:-1]+dr, pot, kind='cubic')
+    r_interp = np.linspace(rbins[0]+dr[0], rbins[-2]+dr[-2], n_rbins)
+    pot_interp = f_interp_pot(r_interp)
+    psi = (-1.0)*pot_interp
+
+
+
+    #Binning Energy for g(E) and f(E) (f(epsilon)) calculations
+    Histo_E, Edges = np.histogram(E, bins=n_ebins)
+    Histo_epsilon, epsedges = np.histogram(epsilon, bins=n_ebins)
+
+    # Are these always positive?
+    dE = Edges[1]-Edges[0]
+    depsilon = epsedges[1]-epsedges[0]
+
+    Edges = Edges + dE/2.
+    epsedges = epsedges + depsilon/2.
+
+
+    return r_interp, pot_interp, E, psi, Histo_E, Edges, Histo_epsilon, epsedges
+
+def densities_derivatives(rbins, psi_bins, m_halo, interp_bins=100, profile='Hernquist', profile_params=3):
+    """
+    Computes the derivatives of
+
+    rbins : number of radial bins.
+
+    psi_bins : psi binned.
+
+    inter_bins : int
+        Values of the interpolated
+
+
+    """
+    assert len(rbins)==len(psi_bins), "Length of r and psi are not equal and I can't interpolate "
+
+    spl1 = InterpolatedUnivariateSpline(rbins, psi_bins)
+
+    # interpolating in the radial bins.
     rbins_hr = np.linspace(min(rbins), max(rbins), interp_bins)
-    nu_tracer_hr = spl1(rbins_hr)
-    psi2_hr = spl2(rbins_hr)
+    #nu_tracer_hr = spl1(rbins_hr)
+    nu_tracer=rho_tracers(rbins_hr, m_halo, profile, profile_params)/m_halo
+    psi_hr = spl1(rbins_hr)
 
     # First derivative.
-    dnu_dpsi = np.gradient(nu, psi_bins)
-    spl3 = interp1d(rbins, dnu_dpsi, kind='cubic')
-    dnu_dpsi_hr = spl3(rbins_hr)
-    
+    dnu_dpsi = np.gradient(nu_tracer, psi_hr)
+    #spl3 = interp1d(rbins, dnu_dpsi, kind='cubic')
+    #dnu_dpsi_hr = spl3(rbins_hr)
+
     # second derivative
-    dnu2_dpsi2 = np.gradient(dnu_dpsi, psi2)
+    #dnu2_dpsi2 = np.gradient(dnu_dpsi, psi2)
+
     # smoothing first derivative
-    dnu_dpsi_hr_smooth = savitzky_golay(dnu_dpsi_hr, 7, 3)
-    dnu2_dpsi2_hr = np.gradient(dnu_dpsi_hr_smooth, psi2_hr)
+    #dnu_dpsi_smooth = savitzky_golay(dnu_dpsi, 5, 3)
+    dnu2_dpsi2 = np.gradient(dnu_dpsi, psi_hr)
     # smoothing second derivative
-    dnu2_dpsi2_hr_smooth = savitzky_golay(dnu2_dpsi2_hr, 5, 3)
+    #dnu2_dpsi2_smooth = savitzky_golay(dnu2_dpsi2, 5, 3)
 
-    return nu, dnu_dpsi, dnu2_dpsi2, nu_hr, dnu_dpsi_smooth, dnu2_dpsi2
+    return rbins_hr, nu_tracer, psi_hr, dnu_dpsi, dnu2_dpsi2
 
-def weight_triaxial(r, Ek, Ep, partID, m, bsize, N_Eb, stellar_mass, profile, profile_params):
+
+def distribution_function(psi, dnu2_dpsi2, epsilon):
     """
-    N_Eb : number of bins for the Energy
+    psi : relative potential
 
+    dnu2_dpsi2 : second derivative of the tracers density with respect to
+                 the relative potential.
+    epsilon : Energy of the particles.
+
+
+    return:
+    -------
+
+    df : numpy.array
+        Distribution function.
 
 
     """
-    G = 4.30071e-6 # Gadget units
-    stellar_mass=stellar_mass*1e10
-    Ep=Ep-G*m*np.size(r)/np.max(r) #correction term, what is this for?
-    E=Ek+Ep
 
-    shift_energy = -np.min(Ep)
-    E += shift_energy
-    Ep += shift_energy
-    
-    #print('r0',len(r))
-    #I chose 300 because this code was initially used for cosmological halos which were way too messed up beyond 300 kpc
-    #w=np.where((r<300) & (r!=r[0]))[0]
-    #r=r[w]
-    #Ep=Ep[w]
-    #Ek=Ek[w]
-    #E=E[w]
-    #partID=partID[w]
-    #print('r1',len(r))
-    # Histogram of radius to smooth the potential Phi(r)
-    #  - spherical averaging for triaxial halos for Laporte 2013
-    #
-    MIN,MAX = np.min(np.log10(r)), np.max(np.log10(r))
-    Nbins= (MAX-MIN)/bsize
-    histo_rad,redges=np.histogram(np.log10(r), bins = np.linspace(MIN, MAX, Nbins))
-    rbins=np.ndarray(shape=np.size(redges)-1, dtype=float)
+    assert len(epsilon)<len(psi), 'Hey'
 
-    for i in range(1,np.size(redges)):
-        rbins[i-1]=redges[i-1]-(redges[i]-redges[i-1])/2.
+    factor = 1/(np.sqrt(8)*np.pi**2)
+    dpsi = np.zeros(len(psi))
+    for i in range(1,len(dpsi)):
+        dpsi[i] = np.abs(psi[i]-psi[i-1])
+    df = np.zeros(len(epsilon))
 
-    rbins=10**rbins
-
-    nn=np.size(rbins)
-    binsize_r=np.ndarray(shape=nn, dtype=float)
-
-    # binsize_r is evaluated here for g(E) calculation
-    for j in range(0,nn):
-        binsize_r[j]=10**redges[j+1]-10**redges[j]
-
-    #TRACER PARAMETRISATION
-    #bb=0.5 #scale radius
-    nu_tracer=rho_tracers(rbins, 1, profile, profile_params)
-
-    #Need to do the reverse indices here -
-    pot2=np.ndarray(shape=np.size(histo_rad), dtype=float)
-
-
-    for j in range(0, np.size(redges)-1):
-        wbin=np.where((np.log10(r)>=redges[j]) & (np.log10(r)<redges[j+1]))
-        if(np.size(wbin)>0):
-            pot2[j]=np.mean(Ep[wbin]) #reverse indices in IDL is much faster than this junk
-
-    # forgot why I wanted more than 20 particles in the bins, maybe sth to do with gradient not working with missing data
-    # this can be improved using an interpolating scheme.
-
-    w=np.where(histo_rad>20.)[0]
-    rbins=rbins[w]
-    binsize_r=binsize_r[w]
-    nu_tracer=nu_tracer[w]
-
-    pot2=pot2[w]
-    pot2-=shift_energy
-    psi2=(-1.0)*pot2
-
-    E-=shift_energy
-    epsilon=(-1.0)*E
-
-    #Fetching derivatives from the data necessary for the Eddington formula evalution
-    # D
-
-    dnu2_dpsi2_hr_smooth = savitzky_golay(dnu2_dpsi2_hr, 5, 3)
-    
-    return rbins, nu_tracer, psi2, dnu_dpsi, dnu2_dpsi2, rbins_hr, nu_tracer_hr, psi2_hr, dnu_dpsi_hr_smooth, dnu2_dpsi2_hr_smooth
-    """
-    #Binning Energy for g(E) and f(E) (f(epsilon)) calculations
-    Histo_E, Edges = np.histogram(E, bins=N_Eb)
-    #Histo_E, Edges = np.histogram(E, bins=len(psi2))
-    Ebins=np.ndarray(shape=np.size(Histo_E), dtype=float)
-    for i in range(1,np.size(Edges)):
-        Ebins[i-1]=Edges[i-1]-(Edges[i]-Edges[i-1])/2.
-
-    Histo_epsilon, epsdges = np.histogram(epsilon, bins=N_Eb)
-    #Histo_epsilon, epsdges = np.histogram(epsilon, bins=len(psi2))
-    epsilon_bins=np.ndarray(shape=np.size(Histo_epsilon), dtype=float)
-    for i in range(1,np.size(epsdges)):
-        epsilon_bins[i-1]=epsdges[i-1]-(epsdges[i]-epsdges[i-1])/2.
-
-
-    #Total N(E) differential energy distribution
-    Histo_M=Histo_E*m/np.sqrt((Ebins[2]-Ebins[1])**2)
-
-    # EDDINGTON FORMULA --------------
-    dpsi=np.ndarray(shape=np.size(psi2), dtype=float)
-    for i in range (1, np.size(dpsi)):
-        dpsi[i]=psi2[i]-psi2[i-1]
-
-
-    distribution_function=np.ndarray(shape=np.size(epsilon_bins), dtype=float)
-    for i in range(0,np.size(epsilon_bins)):
-        eps=epsilon_bins[i]
-        w=np.where(psi2<eps)[0]
-
-        if (np.size(w)!=0):
-            #w=np.array(w)
-            tot1=dpsi[w]
-            tot2=dnu2_dpsi2[w]
-            tot3=np.sqrt(2.0*(eps-psi2[w]))
-            tot=tot1*tot2/tot3
-            val=(1.0)/(np.sqrt(8.0)*np.pi**2)*np.sum(tot) #Arthur's eval as Sum (in sims no divergence due to res)
-            #print val, i, "val, i"
-            distribution_function[i]=val
+    for i in range(len(epsilon)):
+        index = np.where(psi<epsilon[i])[0]
+        #print(len(index))
+        #print(len(index))
+        if len(index)==0:
+            df[i]=0
         else:
-            distribution_function[i]=0
+            df[i] = np.sum(dpsi[index]/(np.sqrt(epsilon[i] - psi[index])) * dnu2_dpsi2[index])
+            if df[i]<0:
+                # Add some check method!
+                assert df[i]>=0, 'df with negative values, something is wrong.'
 
-    #return dnu2_dpsi2, dpsi, psi2, epsilon_bins, distribution_function
+    return factor*df
 
-    #DENSITY OF STATES--------------
-    wrme=np.ndarray(shape=np.size(Ebins), dtype=int)
-    rme=np.ndarray(shape=np.size(Ebins), dtype=float)
-
-    # Nico: commented this to avoid some values of pot2>Ebins since
-    # taking the max(wpot_equals_E) don't garantee to avoid them.
-    #for i in range(0, np.size(Ebins)):
-    #    wpot_equals_E=np.where(pot2<=Ebins[i])[0]
-    #    if (len(wpot_equals_E)!=0):
-    #        wrme[i]=np.max(wpot_equals_E)
-    #    else:
-    #        wrme[i]=0
-    #
-    density_of_states=np.ndarray(shape=np.size(Ebins), dtype=float) # density of states integral (evaluated as sum)
-    for i in range(0,np.size(Ebins)):
-        wpot_equals_E=np.where(pot2<=Ebins[i])[0]
-        if (len(wpot_equals_E)==0):
-            g1=0.0
-        else:
-            g1=rbins[wpot_equals_E]**2
-            #g2=np.sqrt(2.0*(Ebins[i]-pot2[0:wrme[i]]))
-            g2=np.sqrt(2.0*(Ebins[i]-pot2[wpot_equals_E]))
-            #density_of_states[i]=(4.0*np.pi)**2*np.sum(binsize_r[0:wrme[i]]*g1*g2)
-            density_of_states[i]=(4.0*np.pi)**2*np.sum(binsize_r[wpot_equals_E]*g1*g2)
-
-
-    indsort=np.argsort(distribution_function) #sorted indices
-    indsort=indsort[::-1] #reverse
-    # weights= D.F(tracers)/ (D.F.(self-consistent)) - self-consistent D.F. f(E) generates the potential Phi
-    # N(E)=f(E)*g(E)
-    Weights=distribution_function[indsort[::-1]]/((Histo_M)/density_of_states)
-
-    # cast the weights to every particle
-    Weights_array=np.ndarray(shape=np.size(r), dtype=float)
-
-    for j in range(0, np.size(Edges)-1):
-        wbin=np.where((E>=Edges[j]) & (E<Edges[j+1]))[0]
-        if(np.size(wbin)!=0):
-            Weights_array[wbin]=Weights[j]
-    #Ensure that the sum of the weights = mass of the tracers - this is not strictly needed
-
-    X=stellar_mass/(np.sum(Weights_array)*m)
-    Weights_array=Weights_array*X
-
-    #print(np.size(Weights_array))
-    #return the IDS from which the weights are associated to the particles
-    #needed for tracking where the tracers end up in subsequent snapshots
-    # Each particle gets a weight.
-    assert len(Weights_array) == len(r), 'Error: number of weights different to the number of particles'
-    return Weights_array, partID
+def density_of_states(rbins, E, pot):
     """
-    
+    Compute the density of states.
+
+    g(E) = (4\pi)^2 \int_0^{r_E} r^2 \sqrt{2(E-\Phi(r))} dr
+
+    Parameters:
+    -----------
+    rbins : numpy.array
+        Array with
+    E : numpy.array
+        Total Energy.
+    pot: numpy.array
+        Potential Energy.
+
+    Returns:
+    --------
+
+    g_E : numpy.array
+        Density of states.
+
+    """
+
+    factor = (4*np.pi)**2
+    g_E = np.zeros(len(E))
+
+    dr = np.zeros(len(rbins))
+    for i in range(1,len(dr)):
+        dr[i] = rbins[i]-rbins[i-1]
+
+
+    for i in range(len(E)):
+        index = np.where(pot<=E[i])[0]
+        if len(index)==0:
+            g_E[i] = 0
+            print('g_w==0 at E={:.2f}'.format(E[i]))
+        else:
+            r = rbins[index]
+            g_E[i] = factor*np.sum(r**2 * np.sqrt(2*dr[index]*(E[i]-pot[index])))
+
+    return g_E
+
+def differential_energy_distribution(hist_E, E_bins, m_part):
+    """
+    Differential Energy distribution.
+
+    N(E) = n / dE
+
+    n : number of particles with energy [E, E+dE].
+    dE : Energy interval.
+
+    Parameters:
+    -----------
+    hist_E :
+
+    """
+    N_E = np.zeros(len(hist_E))
+    for i in range(len(hist_E)):
+        dE = np.abs(E_bins[i+1]-E_bins[i])
+        N_E[i] = hist_E[i]*m_part / dE
+
+    return N_E, savitzky_golay(N_E, 13, 3) # smoothing the curve
+
+def cast_weights(w, E_part, E_bins):
+    """
+    Assigns weights to each DM particle.
+    For each energy bin it finds all the particles that
+    have that energy and give the weight corresponding to that
+    energy bin.
+
+
+    """
+    part_weights = np.zeros(len(E_part))
+    for i in range(1,len(E_bins)):
+        index_part_E = np.where((E_part<E_bins[i]) & (E_part>=E_bins[i-1]))
+        part_weights[index_part_E] = w[i]
+
+    return part_weights
+
+
+def weights(r, Epp, v, mp, m_shalo, profiles, profile_params):
+    """
+    Computes weights
+
+
+    """
+
+    print('Number of particles : ', len(r))
+    # Computes energies!
+    rbins, pot, E, psi, Histo_E, Edges, Histo_epsilon, eps_edges = energies(r, Epp, v, 1000, 100)
+
+    # Computes N_E
+    N_E, N_E_smooth = differential_energy_distribution(Histo_E, Edges, mp)
+
+
+    # Density of states. size = len(Edges)
+    g_E = density_of_states(rbins, Edges, pot)
+
+    #  Tracers densities derivatives.
+    r_hr,  nu_tracer, psi_hr, dnu_dpsi_smooth, dnu2_dpsi2_smooth = densities_derivatives(rbins,
+                                                                                         psi,
+                                                                                         m_shalo,
+                                                                                         interp_bins=10000,
+                                                                                         profile=profiles,
+                                                                                         profile_params=profile_params)
+
+    # Distribution function (f size = interp_bins)
+
+    f = distribution_function(psi_hr, dnu2_dpsi2_smooth, eps_edges)
+
+    # Interpolating g(E) and N(E)
+    n_interp = 10000
+    E_edges_inter = np.linspace(min(Edges), max(Edges[:-1]), n_interp)
+
+    g_E_interp = interp1d(Edges, g_E)
+    g_E_I = g_E_interp(E_edges_inter)
+
+    N_E_interp = interp1d(Edges[:-1], N_E)
+    N_E_I = N_E_interp(E_edges_inter)
+
+    f_E_interp = interp1d(-Edges, f)
+    f_E_I = f_E_interp(-E_edges_inter)
+
+    #print(len(g_E_I), len(N_E_I), len(f_E_I))
+
+
+    # Weights
+    w = f_E_I[::-1] * g_E_I / N_E_I
+
+    w_p = cast_weights(w, E, E_edges_inter)
+    print(sum(w_p)*mp, len(w_p))
+    return w_p
+
+
 if __name__ == "__main__":
     snapshot = sys.argv[1]
 
@@ -271,9 +363,9 @@ if __name__ == "__main__":
 
     rbins, nu_tracer, psi2, dnu_dpsi, dnu2_dpsi2, rbins_hr, nu_tracer_hr, psi2_hr, dnu_dpsi_hr, dnu2_dpsi2_hr = weight_triaxial(rr, Ekk, Epp, ids, partmass, 0.01, 100, 1, 'Hernquist', [40.82])
     print(len(rbins))
-    
+
     import matplotlib.pyplot as plt
-    
+
     plt.figure(figsize=(6, 15))
     plt.subplot(3,1,1)
     plt.plot(np.log(rbins_hr), np.log(nu_tracer_hr), lw=1, c='C9')

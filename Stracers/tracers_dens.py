@@ -42,5 +42,5 @@ def dens_Einasto(r, M, n, r_eff):
 
     d_n = 3*n - 1/3. + 0.0079/n
 
-    rho = np.exp(-d_n*((r/r_eff)**n)-1)
+    rho = np.exp(-d_n*((r/r_eff)**(1/n))-1)
     return rho

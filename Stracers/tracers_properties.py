@@ -1,6 +1,8 @@
 import numpy as np
 #import reading_snapshots
 
+from sklearn.neighbors import NearestNeighbors
+
 
 
 
@@ -199,6 +201,79 @@ def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted=0):
             vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i] = velocity_dispersion(pos[index], vel[index])
 
     return vr_disp_r, vtheta_disp_r, vphi_disp_r
+
+def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, relative=False):
+    """
+    Returns a 2d histogram of the anisotropy parameter in galactic coordinates.
+
+    Parameters:
+    ----------
+    pos : numpy ndarray
+        3d array with the cartesian positions of the particles.
+    vel : numpy.ndarray
+        3d array with the cartesian velocoties of the particles.
+    lbins : int
+        Numer of bins to do the grid in latitude.
+    bbins : int
+        Number of bins to do the grid in logitude.
+    n_n : int
+        Number of neighbors.
+    d_slice : float
+        galactocentric distance to make the slice cut.
+    weights : numpy.array
+        Array with the weights for the particles
+    relative :  If True, the velocity dispersion is computed relative to the
+                mean. (default = False)
+
+    Returns:
+    --------
+
+    sigma_r_grid : numpy ndarray
+        2d array with the radial velocity dispersions.
+    sigma_t_grid : numoy ndarray
+        2d array with the tangential velocity dispersions.
+    """
+
+    ## Defining the
+    d_b_rads = np.linspace(-np.pi/2., np.pi/2., bbins)
+    d_l_rads = np.linspace(-np.pi, np.pi, lbins)
+    ## Defining the 2d arrays for the velocity dispersions.
+
+    sigma_r_grid = np.zeros((lbins-1, bbins-1))
+    sigma_t_grid = np.zeros((lbins-1, bbins-1))
+
+
+    r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
+
+    # Finding the NN.
+    k = 0
+    neigh = NearestNeighbors(n_neighbors=n_n, radius=1, algorithm='ball_tree')
+    ngbrs = neigh.fit(pos)
+    # Computing mean velocity dispersions
+    if relative==True:
+        index_cut =  np.where((r<(d_slice+5)) & (r>(d_slice-5)))
+        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =
+        velocity_dispersion_weights(pos[index_cut], vel[index_cut], weights[indix_cut])
+
+
+    for i in range(len(d_l_rads)-1):
+        for j in range(len(d_b_rads)-1):
+            #print(i, j)
+            gc = SkyCoord(l=d_l_rads[i]*u.radian, b=d_b_rads[j]*u.radian, frame='galactic', distance=d_slice*u.kpc)
+            pos_grid = gc.cartesian.xyz.value
+            # Finding the nearest neighbors.
+            distances, indices = neigh.kneighbors([pos_grid])
+            sigma_r, sigma_theta, sigma_phi = velocity_dispersion_weights(pos[indices[0,:]], vel[indices[0,:]], weights[indices[0,:]])
+            if relative==True:
+                sigma_t_grid[i][j] = ((sigma_theta**2 + sigma_phi**2))**0.5 - (sigma_phi_mean**2 + sigma_theta_mean**2)**0.5
+                sigma_r_grid[i][j] = sigma_r - sigma_r_mean
+            else:
+                sigma_t_grid[i][j] = ((sigma_theta**2 + sigma_phi**2))**0.5
+                sigma_r_grid[i][j] = sigma_r
+            k+=1
+    return sigma_r_grid, sigma_t_grid
+
+
 
 """
 if __name__ == "__main__":

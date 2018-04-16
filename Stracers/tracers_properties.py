@@ -2,7 +2,7 @@ import numpy as np
 #import reading_snapshots
 
 from sklearn.neighbors import NearestNeighbors
-
+from astropy.coordinates import SkyCoord
 
 
 
@@ -252,8 +252,7 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, relative=False):
     # Computing mean velocity dispersions
     if relative==True:
         index_cut =  np.where((r<(d_slice+5)) & (r>(d_slice-5)))
-        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =
-        velocity_dispersion_weights(pos[index_cut], vel[index_cut], weights[indix_cut])
+        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =  velocity_dispersion_weights(pos[index_cut], vel[index_cut], weights[indix_cut])
 
 
     for i in range(len(d_l_rads)-1):

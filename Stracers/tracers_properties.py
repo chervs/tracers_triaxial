@@ -3,7 +3,7 @@ import numpy as np
 
 from sklearn.neighbors import NearestNeighbors
 from astropy.coordinates import SkyCoord
-
+from astropy import units as u
 
 
 def den_profile(r, mass, rbins, rcut):
@@ -201,6 +201,65 @@ def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted=0):
             vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i] = velocity_dispersion(pos[index], vel[index])
 
     return vr_disp_r, vtheta_disp_r, vphi_disp_r
+
+
+def velocity_dispersions_octants(pos, vel, nbins, rmax, weighted):
+
+    """
+    Computes the velocity dispersion in eight octants in the sky,
+    defined in galactic coordinates as follows:
+
+    octant 1 :
+    octant 2 :
+    octant 3 :
+    octant 4 :
+    octant 5 :
+    octant 6 :
+    octant 7 :
+    octant 8 :
+
+    Parameters:
+    -----------
+
+    Output:
+    -------
+
+
+
+    """
+
+    ## Making the octants cuts:
+
+    d_b_rads = np.linspace(-np.pi/2., np.pi/2., 5)
+    d_l_rads = np.linspace(-np.pi, np.pi, 3)
+    r_bins = np.linspace(0, 300, 31)
+
+    ## Arrays to store the velocity dispersion profiles
+    vr_octants = np.zeros((nbins-1, 8))
+    v_theta_octants = np.zeros((nbins-1, 8))
+    v_phi_octants = np.zeros((nbins-1, 8))
+
+    ## Octants counter, k=0 is for the radial bins!
+    k = 0
+
+    l, b = pos_cartesian_to_galactic(pos, vel)
+
+    for i in range(len(d_l_rads)-1):
+        for j in range(len(d_b_rads)-1):
+            index = np.where((l<d_l_rads[i+1]) & (l>d_l_rads[i]) &\
+                             (b>d_b_rads[j]) & (b<d_b_rads[j+1]))
+
+            if weighted==0:
+                vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmax)
+            elif weighted==1:
+                vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmax, weighted=1)
+
+            k+=1
+
+    return vr_octants, v_theta_octants, v_phi_octants
+
+
+
 
 def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, relative=False):
     """

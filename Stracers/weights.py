@@ -1,10 +1,12 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import sys
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.interpolate import interp1d
 from pygadgetreader import readsnap
-from tracers_dens import *
-from smooth import savitzky_golay
+from .tracers_dens import *
+from .smooth import savitzky_golay
+
 
 """
 To-do:
@@ -14,10 +16,31 @@ To-do:
 def rho_tracers(r, M, profile, profile_params):
     """
     Density profiles for the
-    to-do:
 
+    Parameters:
+    ----------
+    r  : numpy.array
+        distances to the DM particles.
+    M : numpy.array
+        masses to the particles.
+    profile : str
+        density profile of the stellar halo.
+    profile_params : list
+        parameters of the stellar halo density profile.
+        for Hernquist : r_a (scale length)
+            Plummer : r_a (scale length)
+            NFW : c, rvir (concentration, virial radius)
+            Einasto : n, r_eff 
+
+    Returns:
+    -------
+    rho : numpy.array
+        density profile.
+
+    to-do:
+    ------
     1. pass as an argument the density function instead of the if statements.
-    2. profile paramas as *profile_params
+    
     """
     if profile == 'Plummer':
         rho = dens_plummer(r, M, profile_params[0])
@@ -34,7 +57,7 @@ def rho_tracers(r, M, profile, profile_params):
 
 #def interpolate_energies()
 
-def energies(r_part, Ep, v, n_rbins, n_ebins):
+def energies(r_part, Ep, v, n_rbins, n_ebins, nbins_coarsed=20):
     r"""
 
     Parameters:
@@ -53,6 +76,8 @@ def energies(r_part, Ep, v, n_rbins, n_ebins):
 
     n_ebins : int
         number of bins, this will be used to bin the energy.
+    nbins_coarsed : int
+        number of bins to bin the potential energy. before interpolation.
 
     Returns:
     --------
@@ -64,7 +89,7 @@ def energies(r_part, Ep, v, n_rbins, n_ebins):
     """
 
     G = 4.30071e-6 # Gadget units
-    nbins_coarsed = 20
+    #nbins_coarsed = 20
     E_k = 0.5*v**2 # Kinetic energy / mass.
     E = E_k + Ep
     epsilon = (-1.0)*E
@@ -74,7 +99,7 @@ def energies(r_part, Ep, v, n_rbins, n_ebins):
     # yes if you are going to interpolate.
 
     rbins = np.logspace(np.min(np.log10(r_part)), np.max(np.log10(r_part)), nbins_coarsed)
-    # spaced between rbins
+    # spaced between r_bins
     dr = np.zeros(len(rbins)-1)
     for i in range(len(rbins)-1):
         dr[i] = rbins[i+1] - rbins[i]
@@ -168,6 +193,10 @@ def distribution_function(psi, dnu2_dpsi2, epsilon):
     df : numpy.array
         Distribution function.
 
+    To-do:
+    ------
+
+    smooth df?
 
     """
 
@@ -272,17 +301,54 @@ def cast_weights(w, E_part, E_bins):
 
     return part_weights
 
+def test_plots(E, NE, gE, df):
+    plt.figure(figsize=(6, 14))
+    plt.subplot(1, 3, 1)
+    plt.loglog(E, NE)
+    plt.subplot(1, 3, 2)
+    plt.loglog(E, gE)
+    plt.subplot(1, 3, 3)
+    plt.loglog(E, df)
+    plt.savefig('test_figure.png', bbox_inches='tight')
+    plt.close()
 
-def weights(r, Epp, v, mp, m_shalo, profiles, profile_params):
+    return 0
+
+def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, nr_bins=1000, ne_bins=100):
     """
-    Computes weights
+    Computes weights:
+
+    r : numpy.array
+        Positions 
+    Epp: potential energy 
+    
+    v : 
+
+    mp : float
+        Mass of the particles in the simulations. It assumes that all the
+        particles have the same mass.
+
+    profiles : str
+        Stellar halo density profile. (Hernquist, Plummer, Einasto, NFW)
+    interp_bins : int 
+        number of bins to do the interpolation for the derivatives of
+        the stellar halo density profile.
+    nr_bins : int
+        number of radial bins.
+    ne_bins : int
+        number of energy bins.
+
 
 
     """
+    n_interp = 10000 
+    
+    # used to interpolate the final results of g_E, N_E, f and
+    #to cast the weights.
 
     print('Number of particles : ', len(r))
     # Computes energies!
-    rbins, pot, E, psi, Histo_E, Edges, Histo_epsilon, eps_edges = energies(r, Epp, v, 1000, 100)
+    rbins, pot, E, psi, Histo_E, Edges, Histo_epsilon, eps_edges = energies(r, Epp, v, nr_bins, ne_bins)
 
     # Computes N_E
     N_E, N_E_smooth = differential_energy_distribution(Histo_E, Edges, mp)
@@ -295,7 +361,7 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params):
     r_hr,  nu_tracer, psi_hr, dnu_dpsi_smooth, dnu2_dpsi2_smooth = densities_derivatives(rbins,
                                                                                          psi,
                                                                                          m_shalo,
-                                                                                         interp_bins=10000,
+                                                                                         interp_bins=interp_bins,
                                                                                          profile=profiles,
                                                                                          profile_params=profile_params)
 
@@ -304,7 +370,6 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params):
     f = distribution_function(psi_hr, dnu2_dpsi2_smooth, eps_edges)
 
     # Interpolating g(E) and N(E)
-    n_interp = 10000
     E_edges_inter = np.linspace(min(Edges), max(Edges[:-1]), n_interp)
 
     g_E_interp = interp1d(Edges, g_E)
@@ -318,12 +383,15 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params):
 
     #print(len(g_E_I), len(N_E_I), len(f_E_I))
 
+    test_plots(E_edges_inter, N_E_I, g_E_I, f_E_I)
 
     # Weights
     w = f_E_I[::-1] * g_E_I / N_E_I
 
     w_p = cast_weights(w, E, E_edges_inter)
-    print(sum(w_p)*mp, len(w_p))
+
+    
+    #rint(sum(w_p)*mp, len(w_p))
     return w_p
 
 

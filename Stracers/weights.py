@@ -57,7 +57,7 @@ def rho_tracers(r, M, profile, profile_params):
 
 #def interpolate_energies()
 
-def energies(r_part, Ep, v, n_rbins, n_ebins, nbins_coarsed=20):
+def energies(r_part, Ep, v, n_rbins, n_ebins, nbins_coarsed=100):
     r"""
 
     Parameters:
@@ -138,7 +138,7 @@ def energies(r_part, Ep, v, n_rbins, n_ebins, nbins_coarsed=20):
 
     return r_interp, pot_interp, E, psi, Histo_E, Edges, Histo_epsilon, epsedges
 
-def densities_derivatives(rbins, psi_bins, m_halo, interp_bins=100, profile='Hernquist', profile_params=3):
+def densities_derivatives(rbins, psi_bins, m_halo, interp_bins, profile, profile_params):
     """
     Computes the derivatives of
 
@@ -152,6 +152,8 @@ def densities_derivatives(rbins, psi_bins, m_halo, interp_bins=100, profile='Her
 
     """
     assert len(rbins)==len(psi_bins), "Length of r and psi are not equal and I can't interpolate "
+
+    print('Computing derivatives for the {} profile with parameters {}'.format(profile, profile_params))
 
     spl1 = InterpolatedUnivariateSpline(rbins, psi_bins)
 
@@ -174,6 +176,24 @@ def densities_derivatives(rbins, psi_bins, m_halo, interp_bins=100, profile='Her
     dnu2_dpsi2 = np.gradient(dnu_dpsi, psi_hr)
     # smoothing second derivative
     #dnu2_dpsi2_smooth = savitzky_golay(dnu2_dpsi2, 5, 3)
+
+
+    index_zeros = np.where(dnu2_dpsi2<0)[0]
+    dnu2_dpsi2[index_zeros] = 0 
+
+    plt.figure(figsize=(12, 6))
+    plt.subplot(2, 1, 1)
+    plt.loglog(rbins_hr, psi_hr, c='k')
+    plt.xlabel(r'$r[kpc]$')
+    plt.ylabel(r'$\Psi (r)$')
+    plt.subplot(2, 1, 2)
+    plt.plot(psi_hr, dnu2_dpsi2, c='k')
+    #plt.plot(psi_hr[:-20], dnu2_dpsi2_smooth[:-20], c='C9')
+    plt.xlabel(r'$\Psi$')
+    plt.ylabel(r'$d^2\nu/d \Psi^2$')
+    plt.savefig('density_profile_{}_derivaitves.png'.format(profile), bbox_inches='tight')
+
+    # this is to prevent the second derivative to be negative. and avoid making the df negative.
 
     return rbins_hr, nu_tracer, psi_hr, dnu_dpsi, dnu2_dpsi2
 
@@ -200,7 +220,7 @@ def distribution_function(psi, dnu2_dpsi2, epsilon):
 
     """
 
-    assert len(epsilon)<len(psi), 'Hey'
+    assert len(epsilon)<len(psi), 'The length of the energy bins has to be larger than those of the potential'
 
     factor = 1/(np.sqrt(8)*np.pi**2)
     dpsi = np.zeros(len(psi))
@@ -218,9 +238,17 @@ def distribution_function(psi, dnu2_dpsi2, epsilon):
             df[i] = np.sum(dpsi[index]/(np.sqrt(epsilon[i] - psi[index])) * dnu2_dpsi2[index])
             if df[i]<0:
                 # Add some check method!
+                if np.sum(dpsi[index])<0:
+                    print('Its \sum dpsi' )
+                if np.sum(dnu2_dpsi2[index])<0:
+                    print('Its \sum dnu2_dpsi2')
+                if np.min(np.sqrt(epsilon[i] - psi[index]))<0:
+                    print('Psi > epsilon')
+
                 assert df[i]>=0, 'df with negative values, something is wrong.'
 
-    return factor*df
+    df_smooth = savitzky_golay(df, 17, 3)
+    return factor*df, factor*df_smooth
 
 def density_of_states(rbins, E, pot):
     """
@@ -261,8 +289,9 @@ def density_of_states(rbins, E, pot):
         else:
             r = rbins[index]
             g_E[i] = factor*np.sum(r**2 * np.sqrt(2*dr[index]*(E[i]-pot[index])))
-
-    return g_E
+    
+            
+    return g_E, savitzky_golay(g_E, 7, 3) # smoothing the curve
 
 def differential_energy_distribution(hist_E, E_bins, m_part):
     """
@@ -302,17 +331,27 @@ def cast_weights(w, E_part, E_bins):
     return part_weights
 
 def test_plots(E, NE, gE, df):
-    plt.figure(figsize=(6, 14))
-    plt.subplot(1, 3, 1)
-    plt.loglog(E, NE)
-    plt.subplot(1, 3, 2)
-    plt.loglog(E, gE)
-    plt.subplot(1, 3, 3)
-    plt.loglog(E, df)
+    print('Plotting test plot')
+    print(min(E), max(E))
+    print(min(NE), max(NE))
+    print(min(gE), max(gE))
+    print(min(df), max(df))
+
+    plt.figure(figsize=(7, 6))
+    plt.subplot(3, 1, 1)
+    plt.loglog(E, NE, c='k')
+    plt.ylabel(r'$N(E)$')
+    plt.subplot(3, 1, 2)
+    plt.loglog(E, gE, c='k')
+    plt.ylabel(r'$g(E)$')
+    plt.subplot(3, 1, 3)
+    plt.loglog(E, df, c='k')
+    plt.ylabel(r'$f(E)$')
+    plt.xlabel(r'$-E$')
     plt.savefig('test_figure.png', bbox_inches='tight')
     plt.close()
 
-    return 0
+    #return 0
 
 def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, nr_bins=1000, ne_bins=100):
     """
@@ -341,7 +380,7 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, n
 
 
     """
-    n_interp = 10000 
+    n_interp = 100000 
     
     # used to interpolate the final results of g_E, N_E, f and
     #to cast the weights.
@@ -355,7 +394,7 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, n
 
 
     # Density of states. size = len(Edges)
-    g_E = density_of_states(rbins, Edges, pot)
+    g_E, g_E_s = density_of_states(rbins, Edges, pot)
 
     #  Tracers densities derivatives.
     r_hr,  nu_tracer, psi_hr, dnu_dpsi_smooth, dnu2_dpsi2_smooth = densities_derivatives(rbins,
@@ -366,13 +405,15 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, n
                                                                                          profile_params=profile_params)
 
     # Distribution function (f size = interp_bins)
+    print(len(eps_edges), len(psi_hr))
 
-    f = distribution_function(psi_hr, dnu2_dpsi2_smooth, eps_edges)
+    f, f_smooth = distribution_function(psi_hr, dnu2_dpsi2_smooth, eps_edges)
 
     # Interpolating g(E) and N(E)
+    
     E_edges_inter = np.linspace(min(Edges), max(Edges[:-1]), n_interp)
 
-    g_E_interp = interp1d(Edges, g_E)
+    g_E_interp = interp1d(Edges, g_E_s)
     g_E_I = g_E_interp(E_edges_inter)
 
     N_E_interp = interp1d(Edges[:-1], N_E)
@@ -381,10 +422,12 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, n
     f_E_interp = interp1d(-Edges, f)
     f_E_I = f_E_interp(-E_edges_inter)
 
+    f_E_interp_s = interp1d(-Edges, f_smooth)
+    f_E_I_s = f_E_interp_s(-E_edges_inter)
     #print(len(g_E_I), len(N_E_I), len(f_E_I))
 
-    test_plots(E_edges_inter, N_E_I, g_E_I, f_E_I)
-
+    test_plots(-E_edges_inter, N_E_I, g_E_I, f_E_I_s)
+    
     # Weights
     w = f_E_I[::-1] * g_E_I / N_E_I
 
@@ -392,7 +435,7 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, n
     factor_w = np.sum(mp*len(E))
     alpha = factor_w/np.sum(w_p)
     #rint(sum(w_p)*mp, len(w_p))
-    return w_p*alpha
+    return w_p*alpha/len(w_p)
 
 
 def weights_snapshot(weights_snap1, ids_snap1, ids_snap2, pos_snap2, vel_snap2\

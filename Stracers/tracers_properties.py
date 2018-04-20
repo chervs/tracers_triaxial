@@ -140,17 +140,24 @@ def velocity_dispersion_weights(pos, vel, weights):
         The value of sigma_phi
 
     """
+    print('Computing velocity dispersion inside a radial bin!')
 
     vr, v_theta, v_phi = vel_cartesian_to_spherical(pos, vel)
 
     vr1 = np.zeros(len(vr))
     vtheta1 = np.zeros(len(vr))
     vphi1 = np.zeros(len(vr))
+ 
+    print('The number of particles is', len(vr1))
 
-    for i in range(len(vr)):
-        vr1[i] = weights[i]*(vr[i]-np.mean(vr))**2
-        vtheta1[i] = weights[i]*(v_theta[i]-np.mean(v_theta))**2
-        vphi1[i] = weights[i]*(v_phi[i]-np.mean(v_phi))**2
+    vr_mean = np.mean(vr)
+    vtheta_mean = np.mean(v_theta)
+    vphi_mean = np.mean(v_phi)
+
+    #or i in range(len(vr)):
+    vr1 = weights*(vr-vr_mean)**2
+    vtheta1 = weights*(v_theta-vtheta_mean)**2
+    vphi1 = weights*(v_phi-vphi_mean)**2
 
     sigma_r = np.sqrt(np.abs(np.sum(vr1))/np.sum(weights))
     sigma_theta = np.sqrt(np.sum(vtheta1)/np.sum(weights))
@@ -192,18 +199,19 @@ def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted=0):
         print('Computing the velocity dispersion profile for the stellar halo!')
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))
-            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i] = velocity_dispersion_weights(pos[index], vel[index]\
-                                                                                        , weights[index])
+            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i]\
+             = velocity_dispersion_weights(pos[index], vel[index]\
+                                           , weights[index])
 
     else:
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))
             vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i] = velocity_dispersion(pos[index], vel[index])
 
-    return vr_disp_r, vtheta_disp_r, vphi_disp_r
+    return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r
 
 
-def velocity_dispersions_octants(pos, vel, nbins, rmax, weighted):
+def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
 
     """
     Computes the velocity dispersion in eight octants in the sky,
@@ -250,9 +258,13 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weighted):
                              (b>d_b_rads[j]) & (b<d_b_rads[j+1]))
 
             if weighted==0:
-                vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmax)
+                vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
+                = velocity_dispersions_r(pos[index], vel[index], nbins, \
+                                         rmax, weights)
             elif weighted==1:
-                vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmax, weighted=1)
+                vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
+                = velocity_dispersions_r(pos[index], vel[index], nbins, rmax,\
+                                         weights, weighted=1)
 
             k+=1
 

@@ -389,7 +389,7 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, n
     w = f_E_I[::-1] * g_E_I / N_E_I
 
     w_p = cast_weights(w, E, E_edges_inter)
-    factor_w = np.sum(m_p*len(E))
+    factor_w = np.sum(mp*len(E))
     alpha = factor_w/np.sum(w_p)
     #rint(sum(w_p)*mp, len(w_p))
     return w_p*alpha

@@ -44,7 +44,48 @@ def den_profile(r, mass, rbins, rcut):
 
     return r_bins+dr, rho_bins
 
+def pos_cartesian_to_galactic(pos, vel):
+    """
+    Make mock observations in galactic coordinates.
+    uses Astropy SkyCoord module.
+    l and b coordinates are computed from cartesian coordinates.
+    l : [-180, 180]
+    b : [-90, 90]
 
+    Parameters:
+    -----------
+    pos : 3d-numpy array.
+    vel : 3d-numpy array.
+    lmin : float.
+           Minimum latitute of the observation in degrees.
+    lmax : float.
+           Maximum latitute of the observation in degrees.
+    bmin : float.
+           Minimum longitude of the observation in degrees.
+    bmax : float.
+           Maximum longitude of the observation in degrees.
+    rmax : float.
+           Maximum radius to compute the anisotropy and dispersion
+           profiles.
+    n_bins_r : int
+           Number of bins to do the radial measurements.
+
+    """
+    ## transforming to galactic coordinates.
+
+    c_gal = SkyCoord(pos, representation='cartesian',frame='galactic')
+    c_gal.representation = 'spherical'
+
+    ## to degrees and range of l.
+
+    l_degrees = c_gal.l.wrap_at(180 * u.deg).radian
+    b_degrees = c_gal.b.radian
+
+    ## Selecting the region of observation.
+
+
+    return l_degrees, b_degrees
+    
 def vel_cartesian_to_spherical(pos, vel):
     """
     Computes velocities in spherical coordinates from cartesian.
@@ -147,7 +188,7 @@ def velocity_dispersion_weights(pos, vel, weights):
     vr1 = np.zeros(len(vr))
     vtheta1 = np.zeros(len(vr))
     vphi1 = np.zeros(len(vr))
- 
+
     print('The number of particles is', len(vr1))
 
     vr_mean = np.mean(vr)
@@ -258,17 +299,17 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
                              (b>d_b_rads[j]) & (b<d_b_rads[j+1]))
 
             if weighted==0:
-                vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
+                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
                 = velocity_dispersions_r(pos[index], vel[index], nbins, \
                                          rmax, weights)
             elif weighted==1:
-                vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
+                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
                 = velocity_dispersions_r(pos[index], vel[index], nbins, rmax,\
                                          weights, weighted=1)
 
             k+=1
 
-    return vr_octants, v_theta_octants, v_phi_octants
+    return dr, vr_octants, v_theta_octants, v_phi_octants
 
 
 

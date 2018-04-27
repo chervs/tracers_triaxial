@@ -13,6 +13,8 @@ def dens_plummer(r, M, a):
 
 def dens_hernquist(r, M, a):
     rho = M / (2 * np.pi) * a / (r*(r+a)**3)
+    print('Computing Hernquist density profile for the tracers with parameters:')
+    print('a = {:.3f}'.format(a))
     return rho
 
 def dens_NFWnRvir(r, M, c, Rvir):
@@ -40,7 +42,10 @@ def dens_Einasto(r, M, n, r_eff):
     """
     assert n>0.5, 'Einasto profile no implemented for n<0.5, see for more details https://arxiv.org/abs/astro-ph/0509417'
 
+    print('Computing Einasto density profile for the tracers with parameters:')
+    print('n = {:.3f}, r_eff = {:.3f}'.format(n, r_eff))
+
     d_n = 3*n - 1/3. + 0.0079/n
 
-    rho = np.exp(-d_n*((r/r_eff)**(1/n))-1)
+    rho = np.exp(-d_n*((r/r_eff)**(1/n)-1))
     return rho

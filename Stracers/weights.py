@@ -323,10 +323,16 @@ def cast_weights(w, E_part, E_bins):
 
 
     """
+    print('Casting particle weights')
+
     part_weights = np.zeros(len(E_part))
+    print('array_weights')
     for i in range(1,len(E_bins)):
         index_part_E = np.where((E_part<E_bins[i]) & (E_part>=E_bins[i-1]))
         part_weights[index_part_E] = w[i]
+        print('Done with bin {:1d}'.format(i))
+
+    print('Done casting weights')
 
     return part_weights
 
@@ -353,7 +359,8 @@ def test_plots(E, NE, gE, df):
 
     #return 0
 
-def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, nr_bins=1000, ne_bins=100):
+def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins,\
+            nr_bins, ne_bins, gsmooth=1, fsmooth=1, nsmooth=1):
     """
     Computes weights:
 
@@ -380,7 +387,7 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, n
 
 
     """
-    n_interp = 100000 
+    n_interp = 10000 
     
     # used to interpolate the final results of g_E, N_E, f and
     #to cast the weights.
@@ -413,29 +420,43 @@ def weights(r, Epp, v, mp, m_shalo, profiles, profile_params, interp_bins=600, n
     
     E_edges_inter = np.linspace(min(Edges), max(Edges[:-1]), n_interp)
 
-    g_E_interp = interp1d(Edges, g_E_s)
+    if gsmooth==1:
+        print('Smoothing g(E)')
+        g_E_interp = interp1d(Edges, g_E_s)
+    elif gsmooth==0:
+        g_E_interp = interp1d(Edges, g_E)
+
     g_E_I = g_E_interp(E_edges_inter)
 
-    N_E_interp = interp1d(Edges[:-1], N_E)
+    if nsmooth==1:
+        print('Smoothing N(E)')
+        N_E_interp = interp1d(Edges[:-1], N_E_smooth)
+    elif nsmooth==0:
+        N_E_interp = interp1d(Edges[:-1], N_E)
+
     N_E_I = N_E_interp(E_edges_inter)
 
-    f_E_interp = interp1d(-Edges, f)
+    if fsmooth==1:
+        print('Smoothing f(E)')
+        f_E_interp = interp1d(-Edges, f_smooth)
+    elif fsmooth==0:
+        f_E_interp = interp1d(-Edges, f)
+
     f_E_I = f_E_interp(-E_edges_inter)
 
-    f_E_interp_s = interp1d(-Edges, f_smooth)
-    f_E_I_s = f_E_interp_s(-E_edges_inter)
-    #print(len(g_E_I), len(N_E_I), len(f_E_I))
 
-    test_plots(-E_edges_inter, N_E_I, g_E_I, f_E_I_s)
+    test_plots(-E_edges_inter, N_E_I, g_E_I, f_E_I)
     
     # Weights
     w = f_E_I[::-1] * g_E_I / N_E_I
 
+    print('Done computing weights')
     w_p = cast_weights(w, E, E_edges_inter)
     factor_w = np.sum(mp*len(E))
     alpha = factor_w/np.sum(w_p)
-    #rint(sum(w_p)*mp, len(w_p))
-    return w_p*alpha/len(w_p)
+
+    print('Done')
+    return w_p*alpha
 
 
 def weights_snapshot(weights_snap1, ids_snap1, ids_snap2, pos_snap2, vel_snap2\
@@ -527,7 +548,6 @@ if __name__ == "__main__":
     rbins, nu_tracer, psi2, dnu_dpsi, dnu2_dpsi2, rbins_hr, nu_tracer_hr, psi2_hr, dnu_dpsi_hr, dnu2_dpsi2_hr = weight_triaxial(rr, Ekk, Epp, ids, partmass, 0.01, 100, 1, 'Hernquist', [40.82])
     print(len(rbins))
 
-    import matplotlib.pyplot as plt
 
     plt.figure(figsize=(6, 15))
     plt.subplot(3,1,1)

@@ -490,23 +490,25 @@ def weights_snapshot(weights_snap1, ids_snap1, ids_snap2, pos_snap2, vel_snap2\
     -------
     """
 
-    assert len(ids_snap1)<= len(ids_snap2), 'Error: Length of weights ids larger than length of ids!'
+    assert len(ids_snap1) <= len(ids_snap2), 'Error: Length of weights ids larger than length of ids!'
     
     # Making copies of arrays.
-    weights_c = np.copy(weights_snap1)
-    ids_snap1_c = np.copy(ids_snap1)
-    ids_snap2_c = np.copy(ids_snap2)
-    pos_c = np.copy(pos_snap2)
-    vel_c = np.copy(vel_snap2)
-    mass_c = np.copy(mass_snap2)
     ## Ids from snap1 that are in snap1
-    common_ids = np.isin(ids_snap2_c, ids_snap1_c)
-    ids_snap2_c = ids_snap2_c[common_ids]
-    pos_c = pos_c[common_ids]
-    vel_c = vel_c[common_ids]  
-    mass_c = mass_c[common_ids] 
+    sorted_ids = np.argsort(ids_snap1)
+    ids_sorted_snap1 = ids_snap1[sorted_ids]
+    w_sorted = weights_snap1[sorted_ids]
 
-    return pos_c, vel_c, mass_c
+
+    sorted_ids2 = np.argsort(ids_snap2)
+    ids_sorted_snap2 = ids_snap2[sorted_ids2]
+    pos_snap2_s = pos_snap2[sorted_ids2]
+    vel_snap2_s = vel_snap2[sorted_ids2]
+    mass_snap2_s = mass_snap2[sorted_ids2]
+
+    common_ids = np.isin(ids_sorted_snap2, ids_sorted_snap1)
+
+
+    return w_sorted, pos_snap2_s[common_ids], vel_snap2_s[common_ids], mass_snap2_s[common_ids]
 
 
 

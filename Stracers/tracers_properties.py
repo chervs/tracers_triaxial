@@ -199,10 +199,12 @@ def velocity_dispersion_weights(pos, vel, weights):
     vr1 = weights*(vr-vr_mean)**2
     vtheta1 = weights*(v_theta-vtheta_mean)**2
     vphi1 = weights*(v_phi-vphi_mean)**2
-
-    sigma_r = np.sqrt(np.abs(np.sum(vr1))/np.sum(weights))
-    sigma_theta = np.sqrt(np.sum(vtheta1)/np.sum(weights))
-    sigma_phi = np.sqrt(np.sum(vphi1)/np.sum(weights))
+    W = np.sum(weights)
+    print('Sum of weights', W)
+    N = len(weights)
+    sigma_r = np.sqrt(np.sum(vr1)/(W))
+    sigma_theta = np.sqrt(np.sum(vtheta1)/(W))
+    sigma_phi = np.sqrt(np.sum(vphi1)/(W))
 
     return sigma_r, sigma_theta, sigma_phi
 
@@ -229,28 +231,32 @@ def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted=0):
     sigma_phi : numpy array
 
     """
+    print('rmax', rmax)
     dr = np.linspace(0, rmax, n_bins)
     r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
     #r = pos
     vr_disp_r = np.zeros(len(dr)-1)
     vtheta_disp_r = np.zeros(len(dr)-1)
     vphi_disp_r = np.zeros(len(dr)-1)
+    w_rbins = np.zeros(len(dr)-1)
+    v_mean_r = np.zeros(len(dr)-1)
+    v_mean_w = np.zeros(len(dr)-1)
 
     if weighted==1:
         print('Computing the velocity dispersion profile for the stellar halo!')
         for i in range(len(dr)-1):
-            index = np.where((r<dr[i+1]) & (r>dr[i]))
+            index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
+            v_mean_r[i] = np.mean(np.sqrt(vel[index,0]**2 + vel[index,1]**2 + vel[index,2]**2))
+            v_mean_w[i] = sum(weights[index]*(np.sqrt(vel[index,0]**2 + vel[index,1]**2 + vel[index,2]**2)))/sum(weights[index])
             vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i]\
              = velocity_dispersion_weights(pos[index], vel[index]\
-                                           , weights[index])
-
-    else:
+                                           ,weights[index])
+    elif weighted==0:
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))
             vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i] = velocity_dispersion(pos[index], vel[index])
 
     return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r
-
 
 def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
 

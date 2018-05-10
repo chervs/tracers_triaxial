@@ -86,6 +86,8 @@ def pos_cartesian_to_galactic(pos, vel):
 
     return l_degrees, b_degrees
     
+
+
 def vel_cartesian_to_spherical(pos, vel):
     """
     Computes velocities in spherical coordinates from cartesian.
@@ -152,6 +154,69 @@ def velocity_dispersion(pos, vel):
 
     return sigma_r, sigma_theta, sigma_phi
 
+
+
+def density_profile_octants(pos, vel, nbins, rmax, weights, weighted):
+
+    """
+    Computes the density profile in eight octants in the sky,
+    defined in galactic coordinates as follows:
+
+    octant 1 :
+    octant 2 :
+    octant 3 :
+    octant 4 :
+    octant 5 :
+    octant 6 :
+    octant 7 :
+    octant 8 :
+
+    Parameters:
+    -----------
+
+    Output:
+    -------
+
+
+
+    """
+
+    ## Making the octants cuts:
+
+    d_b_rads = np.linspace(-np.pi/2., np.pi/2., 5)
+    d_l_rads = np.linspace(-np.pi, np.pi, 3)
+    r_bins = np.linspace(0, 300, 31)
+
+    ## Arrays to store the velocity dispersion profiles
+    rho_octants = np.zeros((nbins-1, 8))
+    r = np.sqrt(pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)
+    ## Octants counter, k=0 is for the radial bins!
+    k = 0
+
+    l, b = pos_cartesian_to_galactic(pos, vel)
+
+    for i in range(len(d_l_rads)-1):
+        for j in range(len(d_b_rads)-1):
+            index = np.where((l<d_l_rads[i+1]) & (l>d_l_rads[i]) &\
+                             (b>d_b_rads[j]) & (b<d_b_rads[j+1]))
+
+            if weighted==0:
+                dr, rho_octants[:,k] \
+                = den_profile(pos[index], vel[index], nbins, \
+                                         rmax, weights)
+            elif weighted==1:
+                dr, rho_octants[:,k] \
+                = den_profile(pos[index], vel[index], nbins, rmax,\
+                                         weights, weighted=1)
+
+            k+=1
+
+    return dr, vr_octants, v_theta_octants, v_phi_octants
+
+
+
+
+
 def velocity_dispersion_weights(pos, vel, weights):
     """
     Computes the velocity dispersions for stellar particles using
@@ -181,7 +246,7 @@ def velocity_dispersion_weights(pos, vel, weights):
         The value of sigma_phi
 
     """
-    print('Computing velocity dispersion inside a radial bin!')
+    #print('Computing velocity dispersion inside a radial bin!')
 
     vr, v_theta, v_phi = vel_cartesian_to_spherical(pos, vel)
 
@@ -189,12 +254,13 @@ def velocity_dispersion_weights(pos, vel, weights):
     vtheta1 = np.zeros(len(vr))
     vphi1 = np.zeros(len(vr))
 
-    print('The number of particles is', len(vr1))
+    #print('The number of particles is', len(vr1))
 
     vr_mean = np.mean(vr)
     vtheta_mean = np.mean(v_theta)
     vphi_mean = np.mean(v_phi)
 
+    n_part = len(vr)
     #or i in range(len(vr)):
     vr1 = weights*(vr-vr_mean)**2
     vtheta1 = weights*(v_theta-vtheta_mean)**2
@@ -203,8 +269,8 @@ def velocity_dispersion_weights(pos, vel, weights):
     sigma_r = np.sqrt(np.abs(np.sum(vr1))/np.sum(weights))
     sigma_theta = np.sqrt(np.sum(vtheta1)/np.sum(weights))
     sigma_phi = np.sqrt(np.sum(vphi1)/np.sum(weights))
-
-    return sigma_r, sigma_theta, sigma_phi
+   
+    return sigma_r, sigma_theta, sigma_phi, n_part
 
 
 def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted=0):
@@ -235,21 +301,22 @@ def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted=0):
     vr_disp_r = np.zeros(len(dr)-1)
     vtheta_disp_r = np.zeros(len(dr)-1)
     vphi_disp_r = np.zeros(len(dr)-1)
+    n_part = np.zeros(len(dr)-1)
 
     if weighted==1:
         print('Computing the velocity dispersion profile for the stellar halo!')
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))
-            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i]\
+            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i]\
              = velocity_dispersion_weights(pos[index], vel[index]\
                                            , weights[index])
 
     else:
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))
-            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i] = velocity_dispersion(pos[index], vel[index])
+            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i] = velocity_dispersion(pos[index], vel[index])
 
-    return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r
+    return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r, n_part
 
 
 def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
@@ -287,6 +354,7 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
     vr_octants = np.zeros((nbins-1, 8))
     v_theta_octants = np.zeros((nbins-1, 8))
     v_phi_octants = np.zeros((nbins-1, 8))
+    n_part_octants = np.zeros((nbins-1, 8))
 
     ## Octants counter, k=0 is for the radial bins!
     k = 0
@@ -298,18 +366,19 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
             index = np.where((l<d_l_rads[i+1]) & (l>d_l_rads[i]) &\
                              (b>d_b_rads[j]) & (b<d_b_rads[j+1]))
 
+            
             if weighted==0:
-                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
-                = velocity_dispersions_r(pos[index], vel[index], nbins, \
-                                         rmax, weights)
+                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
+                n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, \
+                                         rmax, weights[index])
             elif weighted==1:
-                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
-                = velocity_dispersions_r(pos[index], vel[index], nbins, rmax,\
-                                         weights, weighted=1)
+                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
+                n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmax,\
+                                                              weights[index], weighted=1)
 
             k+=1
 
-    return dr, vr_octants, v_theta_octants, v_phi_octants
+    return dr, vr_octants, v_theta_octants, v_phi_octants, n_part_octants
 
 
 

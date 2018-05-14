@@ -265,14 +265,7 @@ def velocity_dispersion_weights(pos, vel, weights):
     vr1 = weights*(vr-vr_mean)**2
     vtheta1 = weights*(v_theta-vtheta_mean)**2
     vphi1 = weights*(v_phi-vphi_mean)**2
-<<<<<<< HEAD
 
-    sigma_r = np.sqrt(np.abs(np.sum(vr1))/np.sum(weights))
-    sigma_theta = np.sqrt(np.sum(vtheta1)/np.sum(weights))
-    sigma_phi = np.sqrt(np.sum(vphi1)/np.sum(weights))
-   
-    return sigma_r, sigma_theta, sigma_phi, n_part
-=======
     W = np.sum(weights)
     #print('Sum of weights', W)
     N = len(weights)
@@ -281,7 +274,6 @@ def velocity_dispersion_weights(pos, vel, weights):
     sigma_phi = np.sqrt(np.sum(vphi1)/(W))
 
     return sigma_r, sigma_theta, sigma_phi
->>>>>>> f12ba1d57c35fe531eed383f2dda1f4a06d8fa84
 
 
 def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted):
@@ -313,26 +305,13 @@ def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted):
     vr_disp_r = np.zeros(len(dr)-1)
     vtheta_disp_r = np.zeros(len(dr)-1)
     vphi_disp_r = np.zeros(len(dr)-1)
-<<<<<<< HEAD
     n_part = np.zeros(len(dr)-1)
-=======
-    #w_rbins = np.zeros(len(dr)-1)
-    #v_mean_r = np.zeros(len(dr)-1)
-    #v_mean_w = np.zeros(len(dr)-1)
->>>>>>> f12ba1d57c35fe531eed383f2dda1f4a06d8fa84
 
     if weighted==1:
         print('Computing the velocity dispersion profile for the stellar halo!')
         for i in range(len(dr)-1):
-<<<<<<< HEAD
-            index = np.where((r<dr[i+1]) & (r>dr[i]))
-            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i]\
-=======
             index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
-            #v_mean_r[i] = np.mean(np.sqrt(vel[index,0]**2 + vel[index,1]**2 + vel[index,2]**2))
-            #v_mean_w[i] = sum(weights[index]*(np.sqrt(vel[index,0]**2 + vel[index,1]**2 + vel[index,2]**2)))/sum(weights[index])
             vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i]\
->>>>>>> f12ba1d57c35fe531eed383f2dda1f4a06d8fa84
              = velocity_dispersion_weights(pos[index], vel[index]\
                                            ,weights[index])
     elif weighted==0:
@@ -391,7 +370,6 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
 
             
             if weighted==0:
-<<<<<<< HEAD
                 dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
                 n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, \
                                          rmax, weights[index])
@@ -399,16 +377,6 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
                 dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
                 n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmax,\
                                                               weights[index], weighted=1)
-=======
-                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
-                = velocity_dispersions_r(pos[index], vel[index], nbins, \
-                                         rmax, weights[index], 0)
-            elif weighted==1:
-                print('HERE in OCTANTS weighted')
-                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
-                = velocity_dispersions_r(pos[index], vel[index], nbins, rmax,\
-                                         weights[index], 1)
->>>>>>> f12ba1d57c35fe531eed383f2dda1f4a06d8fa84
 
             k+=1
 

@@ -247,7 +247,7 @@ def distribution_function(psi, dnu2_dpsi2, epsilon):
 
                 assert df[i]>=0, 'df with negative values, something is wrong.'
 
-    df_smooth = savitzky_golay(df, 17, 3)
+    df_smooth = savitzky_golay(df, 51, 3)
     return factor*df, factor*df_smooth
 
 def density_of_states(rbins, E, pot):
@@ -291,7 +291,7 @@ def density_of_states(rbins, E, pot):
             g_E[i] = factor*np.sum(r**2 * np.sqrt(2*dr[index]*(E[i]-pot[index])))
     
             
-    return g_E, savitzky_golay(g_E, 7, 3) # smoothing the curve
+    return g_E, savitzky_golay(g_E, 9, 3) # smoothing the curve
 
 def differential_energy_distribution(hist_E, E_bins, m_part):
     """
@@ -312,7 +312,7 @@ def differential_energy_distribution(hist_E, E_bins, m_part):
         dE = np.abs(E_bins[i+1]-E_bins[i])
         N_E[i] = hist_E[i]*m_part / dE
 
-    return N_E, savitzky_golay(N_E, 13, 3) # smoothing the curve
+    return N_E, savitzky_golay(N_E, 7, 3) # smoothing the curve
 
 def cast_weights(w, E_part, E_bins):
     """
@@ -491,7 +491,7 @@ def weights_snapshot(weights_snap1, ids_snap1, ids_snap2, pos_snap2, vel_snap2\
     """
 
     assert len(ids_snap1) <= len(ids_snap2), 'Error: Length of weights ids larger than length of ids!'
-    
+    assert len(weights_snap1) == len(ids_snap1), 'Error: Length of ids different from length of weights.'    
     # Making copies of arrays.
     ## Ids from snap1 that are in snap1
     sorted_ids = np.argsort(ids_snap1)

@@ -86,27 +86,44 @@ def pos_cartesian_to_galactic(pos, vel):
 
     return l_degrees, b_degrees
     
-def vel_cartesian_to_spherical(pos, vel):
+
+
+def vel_cartesian_to_spherical(pos, vel, err_p=0):
     """
-    Computes velocities in spherical coordinates from cartesian.
+    Computes velocities in spherical coordinates from Cartesian.
+    Assuming the ISO convention. Where theta is the inclination angle
+    and phi the azimuth.
+
+    It also assign a *constant* error to the positions assuming a Gaussian
+    distribution.
 
     Parameters:
     -----------
 
-    pos : numpy.array
+    pos : numpy.ndarray
         3-D Cartesian positions of the particles.
-    vel : numpy.array
+    vel : numpy.ndarray
         3-D Cartesian velocities of the particles.
+
+    err_p : float
+        Error in the distance estimates.
 
     Returns:
     --------
 
-    vr :
-    vthehta :
-    vphi :
+    vr : numpy.ndarray
+        Radial component of the velocity.
+    vthehta : numpy.ndarray
+        Theta component of the velocity.
+    vphi : numpy.ndarray
+        Phi component of the velocity.
 
     """
+
     r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
+
+    r = np.random.normal(r, err_p, size=len(r))
+
     theta = np.arccos(pos[:,2]/r)
     phi = np.arctan2(pos[:,1], pos[:,0])
 
@@ -142,6 +159,8 @@ def velocity_dispersion(pos, vel):
         The value of sigma_theta
     sigma_phi : float
         The value of sigma_phi
+    n_part : float
+        Number of particles used to compute the velocity dispersion.
 
     """
 
@@ -150,9 +169,74 @@ def velocity_dispersion(pos, vel):
     sigma_theta = np.std(v_theta)
     sigma_phi = np.std(v_phi)
 
-    return sigma_r, sigma_theta, sigma_phi
+    n_part = len(vr)
 
-def velocity_dispersion_weights(pos, vel, weights):
+    return sigma_r, sigma_theta, sigma_phi, n_part
+
+
+
+def density_profile_octants(pos, vel, nbins, rmax, weights, weighted):
+
+    """
+    Computes the density profile in eight octants in the sky,
+    defined in galactic coordinates as follows:
+
+    octant 1 :
+    octant 2 :
+    octant 3 :
+    octant 4 :
+    octant 5 :
+    octant 6 :
+    octant 7 :
+    octant 8 :
+
+    Parameters:
+    -----------
+
+    Output:
+    -------
+
+
+
+    """
+
+    ## Making the octants cuts:
+
+    d_b_rads = np.linspace(-np.pi/2., np.pi/2., 5)
+    d_l_rads = np.linspace(-np.pi, np.pi, 3)
+    r_bins = np.linspace(0, 300, 31)
+
+    ## Arrays to store the velocity dispersion profiles
+    rho_octants = np.zeros((nbins-1, 8))
+    r = np.sqrt(pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)
+    ## Octants counter, k=0 is for the radial bins!
+    k = 0
+
+    l, b = pos_cartesian_to_galactic(pos, vel)
+
+    for i in range(len(d_l_rads)-1):
+        for j in range(len(d_b_rads)-1):
+            index = np.where((l<d_l_rads[i+1]) & (l>d_l_rads[i]) &\
+                             (b>d_b_rads[j]) & (b<d_b_rads[j+1]))
+
+            if weighted==0:
+                dr, rho_octants[:,k] \
+                = den_profile(pos[index], vel[index], nbins, \
+                                         rmax, weights)
+            elif weighted==1:
+                dr, rho_octants[:,k] \
+                = den_profile(pos[index], vel[index], nbins, rmax,\
+                                         weights, weighted=1)
+
+            k+=1
+
+    return dr, vr_octants, v_theta_octants, v_phi_octants
+
+
+
+
+
+def velocity_dispersion_weights(pos, vel, weights, err_r=0, err_t=0, err_p=0):
     """
     Computes the velocity dispersions for stellar particles using
     the weights fro DM particles.
@@ -163,16 +247,45 @@ def velocity_dispersion_weights(pos, vel, weights):
 
     N = number of particles, \omega_i the weights.
 
+    It also assign errors to the velocities and distances by assigning Gaussian
+    errors in both distances and velocities.
 
     Parameters:
-    ----------
-    pos : 3d numpy array
-        Array with the cartesian coordinates of the particles
-    vel : 3d numpy array
-        Array with the cartesian velocities of the particles
+    -----------
+
+    pos : numpy.ndarray 
+        Array with the Cartesian coordinates of the particles.
+
+    vel : numpy.ndarray
+        Array with the Cartesian velocities of the particles.
+
+    weights : numpy.ndarray
+        Array with the weights of the DM particles.
+
+    err_r : float  
+        Errors in v_r measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_r
+        value. By default err_r = 0 means no error.
+
+    err_theta : float
+        Errors in v_theta measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_theta
+        value. By default err_theta = 0 means no error.
+
+   err_phi : float
+        Errors in v_phi measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_phi
+        value. By default err_phi = 0 means no error.
+
+
+    err_p : float
+        Errors in v_r measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_r
+        value. By default err_r = 0 means no error.
 
     Returns:
     --------
+
     sigma_r : float
         The value of sigma_r.
     sigma_theta : float
@@ -181,48 +294,61 @@ def velocity_dispersion_weights(pos, vel, weights):
         The value of sigma_phi
 
     """
-    #print('Computing velocity dispersion inside a radial bin!')
 
+    # error in position. 
+
+    # Compute the velocity in spherical coordinates.
     vr, v_theta, v_phi = vel_cartesian_to_spherical(pos, vel)
 
-    vr1 = np.zeros(len(vr))
-    vtheta1 = np.zeros(len(vr))
-    vphi1 = np.zeros(len(vr))
+    # Arrays for stellar velocity profiles. 
+    vr_stellar = np.zeros(len(vr))
+    vtheta_stellar = np.zeros(len(vr))
+    vphi_stellar = np.zeros(len(vr))
 
-    #print('The number of particles is', len(vr1))
 
+    vr = np.random.normal(vr, err_r, size=len(vr))
+    v_theta = np.random.normal(v_theta, err_theta, size=len(v_theta))
+    v_phi = np.random.normal(v_phi, err_phi, size=len(v_phi))
+
+    # mean values of the velocities.
     vr_mean = np.mean(vr)
     vtheta_mean = np.mean(v_theta)
     vphi_mean = np.mean(v_phi)
 
-    #or i in range(len(vr)):
-    vr1 = weights*(vr-vr_mean)**2
-    vtheta1 = weights*(v_theta-vtheta_mean)**2
-    vphi1 = weights*(v_phi-vphi_mean)**2
-    W = np.sum(weights)
-    #print('Sum of weights', W)
-    N = len(weights)
-    sigma_r = np.sqrt(np.sum(vr1)/(W))
-    sigma_theta = np.sqrt(np.sum(vtheta1)/(W))
-    sigma_phi = np.sqrt(np.sum(vphi1)/(W))
+    # Number of particles : 
+    n_part = len(vr)
 
-    return sigma_r, sigma_theta, sigma_phi
+    # stellar velocity dispersions 
+    vr_stellar = weights*(vr-vr_mean)**2
+    vtheta_stellar = weights*(v_theta-vtheta_mean)**2
+    vphi_stellar = weights*(v_phi-vphi_mean)**2
+
+    W_total = np.sum(weights)
+
+    sigma_r = np.sqrt(np.abs(np.sum(vr1))/W_total)
+    sigma_theta = np.sqrt(np.sum(vtheta1)/W_total)
+    sigma_phi = np.sqrt(np.sum(vphi1)/W_total)
+   
+    return sigma_r, sigma_theta, sigma_phi, n_part
 
 
-def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted):
+
+def velocity_dispersions_r(pos, vel, n_bins, rmin, rmax, weights, weighted):
     """
-    Compute the velocity dispersions in radial bins.i
+    Compute the velocity dispersion in radial bins. 
 
     Parameters:
     ----------
-    pos : 3d numpy array
-        Array with the cartesian coordinates of the particles
-    vel : 3d numpy array
-        Array with the cartesian velocities of the particles
+    pos : numpy.ndarray
+        Array with the Cartesian coordinates of the particles.
+    vel : numpy.ndarray
+        Array with the Cartesian velocities of the particles.
     n_bins : int
-        Number of radial bins to compute the velocity dispersions.
+        Number of radial bins to compute the velocity dispersion.
+    rmin : int
+        Minimum radius to compute the velocity dispersion.
     rmax : int
-        Maximum radius to compute the velocity dispersions.
+        Maximum radius to compute the velocity dispersion.
 
     Returns:
     --------
@@ -230,33 +356,38 @@ def velocity_dispersions_r(pos, vel, n_bins, rmax, weights, weighted):
     sigma_theta : numpy array
     sigma_phi : numpy array
 
+    to-do:
+    ------
+    1. Put assert statements for the length of the weights and the positions and
+       velocities.
+    
+
     """
+    print('rmin', rmin)
     print('rmax', rmax)
-    dr = np.linspace(0, rmax, n_bins)
+
+    dr = np.linspace(rmin, rmax, n_bins)
     r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
     #r = pos
-    vr_disp_r = np.zeros(len(dr)-1)
-    vtheta_disp_r = np.zeros(len(dr)-1)
-    vphi_disp_r = np.zeros(len(dr)-1)
-    #w_rbins = np.zeros(len(dr)-1)
-    #v_mean_r = np.zeros(len(dr)-1)
-    #v_mean_w = np.zeros(len(dr)-1)
+    vr_disp_r = np.zeros(n_bins-1)
+    vtheta_disp_r = np.zeros(n_bins-1)
+    vphi_disp_r = np.zeros(n_bins-1)
+    n_part = np.zeros(n_bins-1)
+
 
     if weighted==1:
         print('Computing the velocity dispersion profile for the stellar halo!')
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
-            #v_mean_r[i] = np.mean(np.sqrt(vel[index,0]**2 + vel[index,1]**2 + vel[index,2]**2))
-            #v_mean_w[i] = sum(weights[index]*(np.sqrt(vel[index,0]**2 + vel[index,1]**2 + vel[index,2]**2)))/sum(weights[index])
-            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i]\
+            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i]\
              = velocity_dispersion_weights(pos[index], vel[index]\
                                            ,weights[index])
     elif weighted==0:
         for i in range(len(dr)-1):
-            index = np.where((r<dr[i+1]) & (r>dr[i]))
-            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i] = velocity_dispersion(pos[index], vel[index])
+            index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
+            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i] = velocity_dispersion(pos[index], vel[index])
 
-    return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r
+    return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r, n_part
 
 def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
 
@@ -293,6 +424,7 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
     vr_octants = np.zeros((nbins-1, 8))
     v_theta_octants = np.zeros((nbins-1, 8))
     v_phi_octants = np.zeros((nbins-1, 8))
+    n_part_octants = np.zeros((nbins-1, 8))
 
     ## Octants counter, k=0 is for the radial bins!
     k = 0
@@ -304,19 +436,19 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
             index = np.where((l<d_l_rads[i+1]) & (l>d_l_rads[i]) &\
                              (b>d_b_rads[j]) & (b<d_b_rads[j+1]))
 
+            
             if weighted==0:
-                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
-                = velocity_dispersions_r(pos[index], vel[index], nbins, \
-                                         rmax, 0, 0)
+                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
+                n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, \
+                                         rmax, weights[index], 0)
             elif weighted==1:
-                print('HERE in OCTANTS weighted')
-                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k] \
-                = velocity_dispersions_r(pos[index], vel[index], nbins, rmax,\
-                                         weights[index], 1)
+                dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
+                n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmax,\
+                                                              weights[index], 1)
 
             k+=1
 
-    return dr, vr_octants, v_theta_octants, v_phi_octants
+    return dr, vr_octants, v_theta_octants, v_phi_octants, n_part_octants
 
 
 
@@ -360,8 +492,6 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, relative=False):
 
     sigma_r_grid = np.zeros((lbins-1, bbins-1))
     sigma_t_grid = np.zeros((lbins-1, bbins-1))
-    sigma_theta_grid = np.zeros((lbins-1, bbins-1))
-    sigma_phi_grid = np.zeros((lbins-1, bbins-1))
 
 
     r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
@@ -373,7 +503,7 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, relative=False):
     # Computing mean velocity dispersions
     if relative==True:
         index_cut =  np.where((r<(d_slice+5)) & (r>(d_slice-5)))
-        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =  velocity_dispersion_weights(pos[index_cut], vel[index_cut], weights[index_cut])
+        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =  velocity_dispersion_weights(pos[index_cut], vel[index_cut], weights[indix_cut])
 
 
     for i in range(len(d_l_rads)-1):
@@ -387,15 +517,12 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, relative=False):
             if relative==True:
                 sigma_t_grid[i][j] = ((sigma_theta**2 + sigma_phi**2))**0.5 - (sigma_phi_mean**2 + sigma_theta_mean**2)**0.5
                 sigma_r_grid[i][j] = sigma_r - sigma_r_mean
-                sigma_theta_grid[i][j] = sigma_theta - sigma_theta_mean
-                sigma_phi_grid[i][j] = sigma_phi - sigma_phi_mean
             else:
                 sigma_t_grid[i][j] = ((sigma_theta**2 + sigma_phi**2))**0.5
                 sigma_r_grid[i][j] = sigma_r
-                sigma_theta_grid[i][j] = sigma_theta 
-                sigma_phi_grid[i][j] = sigma_phi 
             k+=1
-    return sigma_r_grid, sigma_t_grid, sigma_theta_grid, sigma_phi_grid
+    return sigma_r_grid, sigma_t_grid
+
 
 
 """

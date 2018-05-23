@@ -1,3 +1,14 @@
+"""
+Script that compute the velocity dispersion and densities of DM particles and
+stellar particles using the weights scheme explained in Laporte 13.
+
+
+author: Nico Garavito-Camargo
+university of arizona
+May 23/2018.
+
+"""
+
 import numpy as np
 #import reading_snapshots
 
@@ -43,6 +54,7 @@ def den_profile(r, mass, rbins, rcut):
        rho_bins[i-1] = np.sum(mass[index]) / V
 
     return r_bins+dr, rho_bins
+
 
 def pos_cartesian_to_galactic(pos, vel):
     """
@@ -333,7 +345,7 @@ def velocity_dispersion_weights(pos, vel, weights, err_r=0, err_t=0, err_p=0):
 
 
 
-def velocity_dispersions_r(pos, vel, n_bins, rmin, rmax, weights, weighted):
+def velocity_dispersions_r(pos, vel, n_bins, rmin, rmax, weights, weighted, err_r=0, err_t=0, err_p=0):
     """
     Compute the velocity dispersion in radial bins. 
 
@@ -381,15 +393,16 @@ def velocity_dispersions_r(pos, vel, n_bins, rmin, rmax, weights, weighted):
             index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
             vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i]\
              = velocity_dispersion_weights(pos[index], vel[index]\
-                                           ,weights[index])
+                                           ,weights[index], err_r, err_t,
+                                           err_p)
     elif weighted==0:
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
-            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i] = velocity_dispersion(pos[index], vel[index])
+            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i] = velocity_dispersion(pos[index], vel[index], err_r, err_t, err_p)
 
     return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r, n_part
 
-def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
+def velocity_dispersions_octants(pos, vel, nbins, rmin, rmax, weights, weighted):
 
     """
     Computes the velocity dispersion in eight octants in the sky,
@@ -440,10 +453,10 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
             if weighted==0:
                 dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
                 n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, \
-                                         rmax, weights[index], 0)
+                                         rmin, rmax, weights[index], 0)
             elif weighted==1:
                 dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
-                n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmax,\
+                n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmin, rmax,\
                                                               weights[index], 1)
 
             k+=1
@@ -453,7 +466,7 @@ def velocity_dispersions_octants(pos, vel, nbins, rmax, weights, weighted):
 
 
 
-def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, relative=False):
+def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, err_r=0, err_t=0, err_p=0, relative=False, shell_width=5):
     """
     Returns a 2d histogram of the anisotropy parameter in galactic coordinates.
 
@@ -480,30 +493,37 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, relative=False):
     --------
 
     sigma_r_grid : numpy ndarray
-        2d array with the radial velocity dispersions.
+        2d array with the radial velocity dispersion.
     sigma_t_grid : numoy ndarray
-        2d array with the tangential velocity dispersions.
+        2d array with the tangential velocity dispersion.
     """
 
-    ## Defining the
+    ## Defining the grid in galactic coordinates.
+
     d_b_rads = np.linspace(-np.pi/2., np.pi/2., bbins)
     d_l_rads = np.linspace(-np.pi, np.pi, lbins)
-    ## Defining the 2d arrays for the velocity dispersions.
-
+    
+    ## Defining the 2d arrays for the velocity dispersion.
     sigma_r_grid = np.zeros((lbins-1, bbins-1))
     sigma_t_grid = np.zeros((lbins-1, bbins-1))
+    sigma_theta_grid = np.zeros((lbins-1, bbins-1))
+    sigma_phi_grid = np.zeros((lbins-1, bbins-1))
+
 
 
     r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
 
-    # Finding the NN.
+    # Finding the NN nearest neighbors.
     k = 0
     neigh = NearestNeighbors(n_neighbors=n_n, radius=1, algorithm='ball_tree')
     ngbrs = neigh.fit(pos)
-    # Computing mean velocity dispersions
-    if relative==True:
-        index_cut =  np.where((r<(d_slice+5)) & (r>(d_slice-5)))
-        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =  velocity_dispersion_weights(pos[index_cut], vel[index_cut], weights[indix_cut])
+
+    # Computing mean velocity dispersion.
+    if relative == True :
+        print('Computing relative with respect to the mean changes in the velocity dispersion')
+        index_cut =  np.where((r<(d_slice+shell_width/2.)) & (r>(d_slice-shell_width/2.)))
+        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =  velocity_dispersion_weights(pos[index_cut], vel[index_cut],  weights[indix_cut], err_r, err_t, err_p)
+
 
 
     for i in range(len(d_l_rads)-1):
@@ -511,25 +531,26 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, relative=False):
             #print(i, j)
             gc = SkyCoord(l=d_l_rads[i]*u.radian, b=d_b_rads[j]*u.radian, frame='galactic', distance=d_slice*u.kpc)
             pos_grid = gc.cartesian.xyz.value
+
             # Finding the nearest neighbors.
             distances, indices = neigh.kneighbors([pos_grid])
-            sigma_r, sigma_theta, sigma_phi = velocity_dispersion_weights(pos[indices[0,:]], vel[indices[0,:]], weights[indices[0,:]])
-            if relative==True:
+            sigma_r, sigma_theta, sigma_phi, n_part = velocity_dispersion_weights(pos[indices[0,:]], vel[indices[0,:]],  weights[indices[0,:]], err_r, err_t, err_p)
+
+            if relative==True :
                 sigma_t_grid[i][j] = ((sigma_theta**2 + sigma_phi**2))**0.5 - (sigma_phi_mean**2 + sigma_theta_mean**2)**0.5
                 sigma_r_grid[i][j] = sigma_r - sigma_r_mean
-            else:
+                sigma_theta_grid[i][j] = sigma_theta - sigma_theta_mean
+                sigma_phi_grid[i][j] = sigma_phi - sigma_phi_mean
+
+            else :
                 sigma_t_grid[i][j] = ((sigma_theta**2 + sigma_phi**2))**0.5
                 sigma_r_grid[i][j] = sigma_r
+                sigma_theta_grid[i][j] = sigma_theta
+                sigma_phi_grid[i][j] = sigma_phi
+
             k+=1
-    return sigma_r_grid, sigma_t_grid
+
+    return sigma_r_grid, sigma_t_grid, sigma_theta_grid, sigma_phi_grid, n_part
 
 
 
-"""
-if __name__ == "__main__":
-
-    weights_hern, w_ids_hern = weight_triaxial(rr, Ekk, Epp, ids, partmass, bins_w, nbins, 1, 'Plummer', [a])
-
-    density_hern = den_tracers(weights_hern, w_ids_hern, rr, massarr, plot_bins, rcut)
-    density_hern_fut = den_tracers(weights_hern, w_ids_hern, rr_fut, massarr_fut, plot_bins, rcut)
-"""

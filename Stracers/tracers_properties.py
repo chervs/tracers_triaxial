@@ -521,8 +521,8 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, err_r=0, err_t=0, 
     # Computing mean velocity dispersion.
     if relative == True :
         print('Computing relative with respect to the mean changes in the velocity dispersion')
-        index_cut =  np.where((r<(d_slice+shell_width/2.)) & (r>(d_slice-shell_width/2.)))
-        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =  velocity_dispersion_weights(pos[index_cut], vel[index_cut],  weights[indix_cut], err_r, err_t, err_p)
+        index_cut = np.where((r<(d_slice+shell_width/2.)) & (r>(d_slice-shell_width/2.)))
+        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =  velocity_dispersion_weights(pos[index_cut], vel[index_cut], weights[index_cut], err_r, err_t, err_p)
 
 
 

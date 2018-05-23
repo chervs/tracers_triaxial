@@ -319,8 +319,8 @@ def velocity_dispersion_weights(pos, vel, weights, err_r=0, err_t=0, err_p=0):
 
 
     vr = np.random.normal(vr, err_r, size=len(vr))
-    v_theta = np.random.normal(v_theta, err_theta, size=len(v_theta))
-    v_phi = np.random.normal(v_phi, err_phi, size=len(v_phi))
+    v_theta = np.random.normal(v_theta, err_t/np.sqrt(2), size=len(v_theta))
+    v_phi = np.random.normal(v_phi, err_t/np.sqrt(2), size=len(v_phi))
 
     # mean values of the velocities.
     vr_mean = np.mean(vr)

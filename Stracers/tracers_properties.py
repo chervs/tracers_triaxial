@@ -337,9 +337,9 @@ def velocity_dispersion_weights(pos, vel, weights, err_r=0, err_t=0, err_p=0):
 
     W_total = np.sum(weights)
 
-    sigma_r = np.sqrt(np.abs(np.sum(vr1))/W_total)
-    sigma_theta = np.sqrt(np.sum(vtheta1)/W_total)
-    sigma_phi = np.sqrt(np.sum(vphi1)/W_total)
+    sigma_r = np.sqrt(np.abs(np.sum(vr_stellar))/W_total)
+    sigma_theta = np.sqrt(np.sum(vtheta_stellar)/W_total)
+    sigma_phi = np.sqrt(np.sum(vphi_stellar)/W_total)
    
     return sigma_r, sigma_theta, sigma_phi, n_part
 
@@ -522,7 +522,7 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, err_r=0, err_t=0, 
     if relative == True :
         print('Computing relative with respect to the mean changes in the velocity dispersion')
         index_cut = np.where((r<(d_slice+shell_width/2.)) & (r>(d_slice-shell_width/2.)))
-        sigma_r_mean, sigma_theta_mean, sigma_phi_mean =  velocity_dispersion_weights(pos[index_cut], vel[index_cut], weights[index_cut], err_r, err_t, err_p)
+        sigma_r_mean, sigma_theta_mean, sigma_phi_mean, n_p =  velocity_dispersion_weights(pos[index_cut], vel[index_cut], weights[index_cut], err_r, err_t, err_p)
 
 
 

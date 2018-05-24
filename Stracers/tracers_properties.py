@@ -402,7 +402,7 @@ def velocity_dispersions_r(pos, vel, n_bins, rmin, rmax, weights, weighted, err_
 
     return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r, n_part
 
-def velocity_dispersions_octants(pos, vel, nbins, rmin, rmax, weights, weighted):
+def velocity_dispersions_octants(pos, vel, nbins, rmin, rmax, weights, weighted, err_r=0, err_t=0, err_p=0):
 
     """
     Computes the velocity dispersion in eight octants in the sky,
@@ -429,8 +429,8 @@ def velocity_dispersions_octants(pos, vel, nbins, rmin, rmax, weights, weighted)
 
     ## Making the octants cuts:
 
-    d_b_rads = np.linspace(-np.pi/2., np.pi/2., 5)
-    d_l_rads = np.linspace(-np.pi, np.pi, 3)
+    d_b_rads = np.linspace(-np.pi/2., np.pi/2., 3)
+    d_l_rads = np.linspace(-np.pi, np.pi, 5)
     #r_bins = np.linspace(0, 300, 31)
 
     ## Arrays to store the velocity dispersion profiles
@@ -444,20 +444,20 @@ def velocity_dispersions_octants(pos, vel, nbins, rmin, rmax, weights, weighted)
 
     l, b = pos_cartesian_to_galactic(pos, vel)
 
-    for i in range(len(d_l_rads)-1):
-        for j in range(len(d_b_rads)-1):
-            index = np.where((l<d_l_rads[i+1]) & (l>d_l_rads[i]) &\
-                             (b>d_b_rads[j]) & (b<d_b_rads[j+1]))
+    for i in range(len(d_b_rads)-1):
+        for j in range(len(d_l_rads)-1):
+            index = np.where((l<d_l_rads[j+1]) & (l>d_l_rads[j]) &\
+                             (b>d_b_rads[i]) & (b<d_b_rads[i+1]))
 
             
             if weighted==0:
                 dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
                 n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, \
-                                         rmin, rmax, weights[index], 0)
+                                         rmin, rmax, weights[index], 0, err_r, err_t)
             elif weighted==1:
                 dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
                 n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmin, rmax,\
-                                                              weights[index], 1)
+                                                              weights[index], 1, err_r, err_t)
 
             k+=1
 

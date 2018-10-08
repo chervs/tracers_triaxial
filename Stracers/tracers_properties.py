@@ -134,7 +134,7 @@ def vel_cartesian_to_spherical(pos, vel, err_p=0):
 
     r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
 
-    r = np.random.normal(r, err_p, size=len(r))
+    r = np.random.normal(r, r*err_p, size=len(r))
 
     theta = np.arccos(pos[:,2]/r)
     phi = np.arctan2(pos[:,1], pos[:,0])
@@ -246,6 +246,178 @@ def density_profile_octants(pos, vel, nbins, rmax, weights, weighted):
 
 
 
+def mean_velocities(pos, vel, err_r=0, err_t=0, err_p=0):
+    """
+    Computes the velocity dispersions for stellar particles using
+    the weights fro DM particles.
+
+    Uses Eq: (3) in Laporte 13a to compute the velocity dispersion this is:
+
+    \sigma_* =  \dfrac{\sum_{i}^N \omega_i (v_i - \bar{v_i})}{\sum_i^N \omega_i}
+
+    N = number of particles, \omega_i the weights.
+
+    It also assign errors to the velocities and distances by assigning Gaussian
+    errors in both distances and velocities.
+
+    Parameters:
+    -----------
+
+    pos : numpy.ndarray 
+        Array with the Cartesian coordinates of the particles.
+
+    vel : numpy.ndarray
+        Array with the Cartesian velocities of the particles.
+
+
+    err_r : float  
+        Errors in v_r measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_r
+        value. By default err_r = 0 means no error.
+
+    err_theta : float
+        Errors in v_theta measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_theta
+        value. By default err_theta = 0 means no error.
+
+   err_phi : float
+        Errors in v_phi measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_phi
+        value. By default err_phi = 0 means no error.
+
+
+    err_p : float
+        Errors in v_r measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_r
+        value. By default err_r = 0 means no error.
+
+    Returns:
+    --------
+
+    mean_r : float
+        The value of sigma_r.
+    mean_theta : float
+        The value of sigma_theta
+    mean_phi : float
+        The value of sigma_phi
+
+    """
+
+    # error in position. 
+
+    # Compute the velocity in spherical coordinates.
+    vr, v_theta, v_phi = vel_cartesian_to_spherical(pos, vel)
+
+    # Arrays for stellar velocity profiles. 
+    vr_stellar = np.zeros(len(vr))
+    vtheta_stellar = np.zeros(len(vr))
+    vphi_stellar = np.zeros(len(vr))
+
+
+    vr = np.random.normal(vr, err_r, size=len(vr))
+    v_theta = np.random.normal(v_theta, err_t/np.sqrt(2), size=len(v_theta))
+    v_phi = np.random.normal(v_phi, err_t/np.sqrt(2), size=len(v_phi))
+
+    #vr = vr + np.random.randint(0, 1, size=len(vr))
+    #v_theta = v_theta + np.random.randint(-err_t/np.sqrt(2), err_t/np.sqrt(2), size=len(v_theta))
+    #v_phi = v_phi + np.random.randint(-err_t/np.sqrt(2), err_t/np.sqrt(2), size=len(v_phi))
+    # mean values of the velocities.
+    vr_mean = np.mean(vr)
+    vtheta_mean = np.mean(v_theta)
+    vphi_mean = np.mean(v_phi)
+
+    # Number of particles : 
+    n_part = len(vr)
+
+    return vr_mean, vtheta_mean, vphi_mean, n_part
+
+
+
+def mean_velocities_weights(pos, vel, weights, err_r=0, err_t=0, err_p=0):
+    """
+    Computes the mean velocities for stellar particles using
+    the weights of the DM particles.
+
+    Uses Eq: (3) in Laporte 13a to compute the velocity dispersion this is:
+
+    \v_j* =  \dfrac{\sum_{i}^N \omega_i (v_{i,j})}{\sum_i^N \omega_i}
+
+    N = number of particles, \omega_i the weights. 
+    i = index of particles
+    j = velocity component. 
+
+    It also assign errors to the velocities and distances assigning Gaussian
+    errors in both distances and velocities.
+
+    Parameters:
+    -----------
+
+    pos : numpy.ndarray 
+        Array with the Cartesian coordinates of the particles.
+
+    vel : numpy.ndarray
+        Array with the Cartesian velocities of the particles.
+
+
+    err_r : float  
+        Errors in v_r measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_r
+        value. By default err_r = 0 means no error.
+
+    err_theta : float
+        Errors in v_theta measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_theta
+        value. By default err_theta = 0 means no error.
+
+    err_phi : float
+        Errors in v_phi measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_phi
+        value. By default err_phi = 0 means no error.
+
+
+    err_p : float
+        Errors in v_r measurements. This value is assumed as the 
+        standard deviation of a Gaussian distribution with mean the true v_r
+        value. By default err_r = 0 means no error.
+
+    Returns:
+    --------
+
+    mean_r : float
+        The value of sigma_r.
+    mean_theta : float
+        The value of sigma_theta
+    mean_phi : float
+        The value of sigma_phi
+
+    """
+
+    # error in position. 
+
+    # Compute the velocity in spherical coordinates.
+    vr, v_theta, v_phi = vel_cartesian_to_spherical(pos, vel)
+
+    # Arrays for stellar velocity profiles. 
+    vr_stellar = np.zeros(len(vr))
+    vtheta_stellar = np.zeros(len(vr))
+    vphi_stellar = np.zeros(len(vr))
+
+
+    #r = np.random.normal(vr, err_r, size=len(vr))
+    #_theta = np.random.normal(v_theta, err_t/np.sqrt(2), size=len(v_theta))
+    #_phi = np.random.normal(v_phi, err_t/np.sqrt(2), size=len(v_phi))
+
+    #vr = vr + np.random.randint(0, 1, size=len(vr))
+    #v_theta = v_theta + np.random.randint(-err_t/np.sqrt(2), err_t/np.sqrt(2), size=len(v_theta))
+    #v_phi = v_phi + np.random.randint(-err_t/np.sqrt(2), err_t/np.sqrt(2), size=len(v_phi))
+    # mean values of the velocities.
+
+    vr_mean = np.mean(vr*weights)/np.sum(weights)
+    vtheta_mean = np.mean(v_theta*weights)/np.sum(weights)
+    vphi_mean = np.mean(v_phi*weights)/np.sum(weights)
+
+
+    return vr_mean, vtheta_mean, vphi_mean
 
 
 def velocity_dispersion_weights(pos, vel, weights, err_r=0, err_t=0, err_p=0):
@@ -318,10 +490,13 @@ def velocity_dispersion_weights(pos, vel, weights, err_r=0, err_t=0, err_p=0):
     vphi_stellar = np.zeros(len(vr))
 
 
-    vr = np.random.normal(vr, err_r, size=len(vr))
-    v_theta = np.random.normal(v_theta, err_t/np.sqrt(2), size=len(v_theta))
-    v_phi = np.random.normal(v_phi, err_t/np.sqrt(2), size=len(v_phi))
+    #vr = np.random.normal(vr, err_r, size=len(vr))
+    #v_theta = np.random.normal(v_theta, err_t/np.sqrt(2), size=len(v_theta))
+    #v_phi = np.random.normal(v_phi, err_t/np.sqrt(2), size=len(v_phi))
 
+    vr = vr #+ np.random.randint(0, 1, size=len(vr))
+    v_theta = v_theta #+ np.random.randint(-err_t/np.sqrt(2), err_t/np.sqrt(2), size=len(v_theta))
+    v_phi = v_phi #+ np.random.randint(-err_t/np.sqrt(2), err_t/np.sqrt(2), size=len(v_phi))
     # mean values of the velocities.
     vr_mean = np.mean(vr)
     vtheta_mean = np.mean(v_theta)
@@ -398,7 +573,7 @@ def velocity_dispersions_r(pos, vel, n_bins, rmin, rmax, weights, weighted, err_
     elif weighted==0:
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
-            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i] = velocity_dispersion(pos[index], vel[index], err_r, err_t, err_p)
+            vr_disp_r[i], vtheta_disp_r[i], vphi_disp_r[i], n_part[i] = velocity_dispersion(pos[index], vel[index])
 
     return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r, n_part
 
@@ -551,6 +726,83 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, err_r=0, err_t=0, 
             k+=1
 
     return sigma_r_grid, sigma_t_grid, sigma_theta_grid, sigma_phi_grid, n_part
+
+
+def velocities2d_NN(pos, vel, weights, lbins, bbins, n_n, d_slice,  err_r=0, err_t=0, err_p=0, relative=False, shell_width=5):
+    """
+    Returns a 2d histogram of the mean velocities in galactic coordinates.
+
+    Parameters:
+    ----------
+    pos : numpy ndarray
+        3d array with the cartesian positions of the particles.
+    vel : numpy.ndarray
+        3d array with the cartesian velocoties of the particles.
+    weights : numpy.array
+        1d array with the weights of the stellar particles.
+    lbins : int
+        Numer of bins to do the grid in latitude.
+    bbins : int
+        Number of bins to do the grid in logitude.
+    n_n : int
+        Number of neighbors.
+    d_slice : float
+        galactocentric distance to make the slice cut.
+    weights : numpy.array
+        Array with the weights for the particles
+    relative :  If True, the velocity dispersion is computed relative to the
+                mean. (default = False)
+
+    Returns:
+    --------
+
+    vmean_r_grid : numpy ndarray
+        2d array with the radial velocity dispersion.
+    vmean_t_grid : numpy ndarray
+        2d array with the tangential velocity dispersion.
+    vmean_theta_grid : numpy ndarray
+        2d array with the theta velocity dispersion.
+    vmean_phi_grid : numpy ndarray
+        2d array with the phi velocity dispersion.
+
+    """
+
+    ## Defining the grid in galactic coordinates.
+
+    d_b_rads = np.linspace(-np.pi/2., np.pi/2., bbins)
+    d_l_rads = np.linspace(-np.pi, np.pi, lbins)
+    
+    ## Defining the 2d arrays for the velocity dispersion.
+    meanv_r_grid = np.zeros((lbins-1, bbins-1))
+    meanv_t_grid = np.zeros((lbins-1, bbins-1))
+    meanv_theta_grid = np.zeros((lbins-1, bbins-1))
+    meanv_phi_grid = np.zeros((lbins-1, bbins-1))
+
+
+
+    r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
+
+    # Finding the NN nearest neighbors.
+    neigh = NearestNeighbors(n_neighbors=n_n, radius=1, algorithm='ball_tree')
+    ngbrs = neigh.fit(pos)
+
+    # Computing mean velocity dispersion.
+    for i in range(len(d_l_rads)-1):
+        for j in range(len(d_b_rads)-1):
+            #print(i, j)
+            gc = SkyCoord(l=d_l_rads[i]*u.radian, b=d_b_rads[j]*u.radian, frame='galactic', distance=d_slice*u.kpc)
+            pos_grid = gc.cartesian.xyz.value
+
+            # Finding the nearest neighbors.
+            distances, indices = neigh.kneighbors([pos_grid])
+            mean_vr, mean_vtheta, mean_vphi = mean_velocities_weights(pos[indices[0,:]], vel[indices[0,:]], weights[indices], err_r, err_t, err_p)
+
+            meanv_t_grid[i][j] = ((mean_vtheta**2 + mean_vphi**2))**0.5
+            meanv_r_grid[i][j] = mean_vr
+            meanv_theta_grid[i][j] = mean_vtheta
+            meanv_phi_grid[i][j] = mean_vphi
+      
+    return meanv_r_grid, meanv_t_grid, meanv_theta_grid, meanv_phi_grid
 
 
 

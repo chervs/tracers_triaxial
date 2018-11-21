@@ -99,6 +99,58 @@ def pos_cartesian_to_galactic(pos, vel):
     return l_degrees, b_degrees
     
 
+def vel_cartesian_to_galactic(pos, vel, err_p=0):
+    """
+    Computes velocities in spherical coordinates from Cartesian.
+    Assuming the ISO convention. Where theta is the inclination angle
+    and phi the azimuth.
+
+    It also assign a *constant* error to the positions assuming a Gaussian
+    distribution.
+
+    Parameters:
+    -----------
+
+    pos : numpy.ndarray
+        3-D Cartesian positions of the particles.
+    vel : numpy.ndarray
+        3-D Cartesian velocities of the particles.
+
+    err_p : float
+        Error in the distance estimates.
+
+    Returns:
+    --------
+
+    vr : numpy.ndarray
+        Radial component of the velocity.
+    vthehta : numpy.ndarray
+        Theta component of the velocity.
+    vphi : numpy.ndarray
+        Phi component of the velocity.
+
+    """
+
+    r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
+
+    r = np.random.normal(r, r*err_p, size=len(r))
+
+    theta = np.arcsin(pos[:,2]/r)
+    phi = np.arctan2(pos[:,1], pos[:,0])
+
+    vr = np.cos(theta)*np.cos(phi)*vel[:,0] \
+         +  np.cos(theta)*np.sin(phi)*vel[:,1] \
+         +  np.sin(theta)*vel[:,2]
+
+    v_theta = -np.sin(theta)*np.cos(phi)*vel[:,0]\
+              - np.sin(theta)*np.sin(phi)*vel[:,1]\
+              + np.cos(theta)*vel[:,2]
+
+    v_phi = -np.sin(phi)*vel[:,0] + np.cos(phi)*vel[:,1]
+
+    return vr, v_theta, v_phi
+
+
 
 def vel_cartesian_to_spherical(pos, vel, err_p=0):
     """
@@ -482,7 +534,8 @@ def velocity_dispersion_weights(pos, vel, weights, err_r=0, err_t=0, err_p=0):
     # error in position. 
 
     # Compute the velocity in spherical coordinates.
-    vr, v_theta, v_phi = vel_cartesian_to_spherical(pos, vel)
+    #vr, v_theta, v_phi = vel_cartesian_to_spherical(pos, vel)
+    vr, v_theta, v_phi = vel_cartesian_to_galactic(pos, vel)
 
     # Arrays for stellar velocity profiles. 
     vr_stellar = np.zeros(len(vr))
@@ -577,10 +630,26 @@ def velocity_dispersions_r(pos, vel, n_bins, rmin, rmax, weights, weighted, err_
 
     return dr, vr_disp_r, vtheta_disp_r, vphi_disp_r, n_part
 
-def velocity_dispersions_octants(pos, vel, nbins, rmin, rmax, weights, weighted, err_r=0, err_t=0, err_p=0):
+
+def anisotropy_parameter(sigma_theta, sigma_phi, sigma_r):
+    sigma_t = np.sqrt(sigma_theta**2 + sigma_phi**2)
+    beta = 1 - (sigma_t**2 / (2*sigma_r**2))
+    return beta
+
+
+
+def anisotropy_parameter_weights(pos, vel, n_bins, rmin, rmax, weights, weighted, err_r=0, err_t=0, err_p=0):
+    dr, sigma_r, sigma_theta, sigma_phi, n_part = velocity_dispersions_r(pos, vel, n_bins, rmin, rmax, weights, weighted)
+    sigma_t = np.sqrt(sigma_theta**2 + sigma_phi**2)
+    beta = 1 - (sigma_t**2 / (2*sigma_r**2))
+    return dr, beta
+
+
+def velocity_dispersions_octants(pos, vel, nbins, rmin, rmax, weights, weighted,
+                                 err_r=0, err_t=0, err_p=0, **kwargs):
 
     """
-    Computes the velocity dispersion in eight octants in the sky,
+    Computes the velocity dispersion in eight Octants in the sky,
     defined in galactic coordinates as follows:
 
     octant 1 :
@@ -614,17 +683,22 @@ def velocity_dispersions_octants(pos, vel, nbins, rmin, rmax, weights, weighted,
     v_phi_octants = np.zeros((nbins-1, 8))
     n_part_octants = np.zeros((nbins-1, 8))
 
+    if 'beta' in kwargs:
+        beta_octants = np.zeros((nbins-1, 8))
+
     ## Octants counter, k=0 is for the radial bins!
     k = 0
 
     l, b = pos_cartesian_to_galactic(pos, vel)
+
+
 
     for i in range(len(d_b_rads)-1):
         for j in range(len(d_l_rads)-1):
             index = np.where((l<d_l_rads[j+1]) & (l>d_l_rads[j]) &\
                              (b>d_b_rads[i]) & (b<d_b_rads[i+1]))
 
-            
+
             if weighted==0:
                 dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
                 n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, \
@@ -633,10 +707,15 @@ def velocity_dispersions_octants(pos, vel, nbins, rmin, rmax, weights, weighted,
                 dr, vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k], \
                 n_part_octants[:,k] = velocity_dispersions_r(pos[index], vel[index], nbins, rmin, rmax,\
                                                               weights[index], 1, err_r, err_t)
-
+            if 'beta' in kwargs:
+                beta_octants[:,k] = anisotropy_parameter(v_theta_octants[:,k], v_phi_octants[:,k], vr_octants[:,k])
             k+=1
 
-    return dr, vr_octants, v_theta_octants, v_phi_octants, n_part_octants
+
+    if 'beta' in kwargs:
+        return dr, vr_octants, v_theta_octants, v_phi_octants, n_part_octants, beta_octants
+    else:
+        return dr, vr_octants, v_theta_octants, v_phi_octants, n_part_octants
 
 
 
@@ -683,7 +762,6 @@ def sigma2d_NN(pos, vel, lbins, bbins, n_n, d_slice, weights, err_r=0, err_t=0, 
     sigma_t_grid = np.zeros((lbins-1, bbins-1))
     sigma_theta_grid = np.zeros((lbins-1, bbins-1))
     sigma_phi_grid = np.zeros((lbins-1, bbins-1))
-
 
 
     r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5

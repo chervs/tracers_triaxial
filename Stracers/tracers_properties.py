@@ -10,11 +10,21 @@ May 23/2018.
 """
 
 import numpy as np
+import h5py
 #import reading_snapshots
 
 from sklearn.neighbors import NearestNeighbors
 from astropy.coordinates import SkyCoord
 from astropy import units as u
+
+
+
+def load_weights(file_name, variable):
+        """
+        """
+        print('loading weights : {}'.format(file_name))
+        f = h5py.File(file_name, 'r')
+        return f[variable]
 
 
 def den_profile(r, mass, rbins, rcut):

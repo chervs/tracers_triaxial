@@ -55,7 +55,7 @@ def den_profile(r, mass, rbins, rcut):
 
 
 
-    r_bins = np.linspace(0, 100, rbins)
+    r_bins = np.linspace(0, rcut, rbins)
     dr = (r_bins[1] - r_bins[0])/2.0
     rho_bins = np.zeros(rbins-1)
     for i in range(1, len(r_bins)):
@@ -457,7 +457,7 @@ def mean_velocities_weights(pos, vel, weights, err_r=0, err_t=0, err_p=0):
     # error in position. 
 
     # Compute the velocity in spherical coordinates.
-    vr, v_theta, v_phi = vel_cartesian_to_spherical(pos, vel)
+    vr, v_theta, v_phi = vel_cartesian_to_galactic(pos, vel)
 
     # Arrays for stellar velocity profiles. 
     vr_stellar = np.zeros(len(vr))
